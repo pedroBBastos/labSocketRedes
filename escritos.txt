@@ -1,0 +1,2 @@
+Explicação funções htons(), htonl(), ntohs(), ntohl()
+https://www.gta.ufrj.br/ensino/eel878/sockets/htonsman.html

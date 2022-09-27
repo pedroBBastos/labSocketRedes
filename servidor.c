@@ -9,9 +9,12 @@
 #include <time.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 
 #define LISTENQ 10
 #define MAXDATASIZE 100
+
+#define MAXLINE 4096
 
 int main (int argc, char **argv) {
     int    listenfd, connfd;
@@ -19,6 +22,16 @@ int main (int argc, char **argv) {
     char   buf[MAXDATASIZE];
     time_t ticks;
     char received_text[500];
+
+    char   error[MAXLINE + 1];
+
+    if (argc != 2) {
+        strcpy(error,"uso: ");
+        strcat(error,argv[0]);
+        strcat(error," <Port>");
+        perror(error);
+        exit(1);
+    }
 
     if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
         perror("socket");
@@ -28,7 +41,7 @@ int main (int argc, char **argv) {
     bzero(&servaddr, sizeof(servaddr));
     servaddr.sin_family      = AF_INET;
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    servaddr.sin_port        = htons(1200);
+    servaddr.sin_port        = htons(atoi(argv[1]));
 
     if (bind(listenfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
         perror("bind");
@@ -64,6 +77,8 @@ int main (int argc, char **argv) {
         bzero(&received_text, sizeof(received_text));
         read(connfd, received_text, 500);
         printf("Mensagem recebida do client: %s \n", received_text);
+
+        // sleep(60); - questão 2
 
         close(connfd);
     }
