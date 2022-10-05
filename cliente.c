@@ -19,10 +19,10 @@ int main(int argc, char **argv) {
     struct sockaddr_in servaddr;
     char text_to_server[500];
 
-    if (argc != 2) {
+    if (argc != 3) {
         strcpy(error,"uso: ");
         strcat(error,argv[0]);
-        strcat(error," <IPaddress>");
+        strcat(error," <Server-IPaddress> <Server-Port>");
         perror(error);
         exit(1);
     }
@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
 
     bzero(&servaddr, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
-    servaddr.sin_port   = htons(1200);
+    servaddr.sin_port   = htons(atoi(argv[2]));
     if (inet_pton(AF_INET, argv[1], &servaddr.sin_addr) <= 0) {
         perror("inet_pton error");
         exit(1);
