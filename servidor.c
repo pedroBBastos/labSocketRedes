@@ -12,13 +12,13 @@
 #include <unistd.h>
 
 #define LISTENQ 10
-#define MAXDATASIZE 100
+#define MAXDATASIZE 500
 
 #define MAXLINE 4096
 
 void printNewClientInformation(int connfd, struct sockaddr_in peeraddr) {
-    char   buf[MAXDATASIZE];
     time_t ticks;
+    char   buf[MAXDATASIZE];
 
     ticks = time(NULL);
     printf("New client received at %.24s!!!\r\n", ctime(&ticks));
@@ -29,8 +29,15 @@ void printNewClientInformation(int connfd, struct sockaddr_in peeraddr) {
     unsigned int local_socket_port = ntohs(peeraddr.sin_port);
     printf("	client local port: %u\n", local_socket_port);
 
-    ticks = time(NULL);
-    snprintf(buf, sizeof(buf), "Hello from server!\nTime: %.24s\r\n", ctime(&ticks));
+
+
+    snprintf(buf, sizeof(buf), 
+		    "Hello! These are the commands available:\n \
+		    	atack\n \
+			defend\n \
+			hide\n \
+			transform\n \
+			exit \nChoose wisely..");
     write(connfd, buf, strlen(buf));
 }
 
