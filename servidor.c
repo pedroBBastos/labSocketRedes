@@ -41,12 +41,27 @@ void printNewClientInformation(int connfd, struct sockaddr_in peeraddr) {
     write(connfd, buf, strlen(buf));
 }
 
+void handleClient(int connfd) {
+    char received_text[500];
+
+    for ( ; ; ) {
+	    printf("Entered server loop for client %d\n", connfd);
+	    bzero(&received_text, sizeof(received_text));
+	    read(connfd, received_text, 500);
+	    printf("Comand received from client (%d): %s \n", connfd, received_text);
+
+	    if(strcmp(received_text, "exit") == 0) {
+		    break;
+	    }
+    }
+}
+
 int main (int argc, char **argv) {
     int    listenfd, connfd;
     struct sockaddr_in servaddr;
     // char   buf[MAXDATASIZE];
     // time_t ticks;
-    char received_text[500];
+    //char received_text[500];
 
     char   error[MAXLINE + 1];
 
@@ -88,31 +103,20 @@ int main (int argc, char **argv) {
 
         getpeername(connfd , (struct sockaddr*) &peeraddr , (socklen_t*) &peerlen);
 
-	/*
-        char local_socket_ip[16];
-        inet_ntop(AF_INET, &peeraddr.sin_addr, local_socket_ip, sizeof(local_socket_ip));
-        printf("Server accepted client connection with IP address: %s\n", local_socket_ip);
-        unsigned int local_socket_port = ntohs(peeraddr.sin_port);
-        printf("Server accepted client connection with with port: %u\n", local_socket_port);
-
-
-        ticks = time(NULL);
-        snprintf(buf, sizeof(buf), "Hello from server!\nTime: %.24s\r\n", ctime(&ticks));
-        write(connfd, buf, strlen(buf));
-	*/
-
 	printNewClientInformation(connfd, peeraddr);
 
-
+	/*
         bzero(&received_text, sizeof(received_text));
         read(connfd, received_text, 500);
         printf("Mensagem recebida do client: %s \n", received_text);
+	*/
 
 	pid_t pid = fork();
 	printf("[test] pid -> %d \n", pid);
 	if (pid == 0){
             close(listenfd);
 	    printf("[test] Inside thread (pid): %d \n", pid);
+	    handleClient(connfd);
             close(connfd);
             exit(0);
         }

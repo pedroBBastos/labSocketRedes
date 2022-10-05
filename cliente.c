@@ -48,26 +48,68 @@ int main(int argc, char **argv) {
     while ( (n = read(sock_file_descriptor, recvline, MAXLINE)) > 0) {
         recvline[n] = 0;
         if (fputs(recvline, stdout) == EOF) {
-            perror("fputs error");
-            exit(1);
-        }
+	    perror("fputs error");
+	    exit(1);
+	}
 
-        printf("Digite seu texto: \n");
-        scanf("%[^\n]s", text_to_server);
-
-        //Envia mensagem para o servidor
-        if(send(sock_file_descriptor, text_to_server, 500, 0) < 0) {
-            puts("Send failed");
-            return 1;
-        }
+        //printf("Type your command: \n");
+        //scanf("%[^\n]s", text_to_server);
     }
 
     if (n < 0) {
-        perror("read error");
-        exit(1);
+            perror("read error");
+            exit(1);
+    }
+	
+
+
+    for ( ; ; ) {
+	printf("Type your command: \n");
+	//fscanf(stdin, "%s", text_to_server);
+	scanf("%[^\n]s", text_to_server);
+
+	printf("Sending command: \n");
+
+	//Envia mensagem para o servidor
+	if(send(sock_file_descriptor, text_to_server, 500, 0) < 0) {
+		puts("Send failed");
+		return 1;
+	}
+
+	if (strcmp(text_to_server, "exit") == 0) {
+		break;
+        }
+	
+	/*
+        while ( (n = read(sock_file_descriptor, recvline, MAXLINE)) > 0) {
+		recvline[n] = 0;
+		if (fputs(recvline, stdout) == EOF) {
+            		perror("fputs error");
+            		exit(1);
+        	}
+
+        	printf("Type your command: \n");
+        	scanf("%[^\n]s", text_to_server);
+
+        	//Envia mensagem para o servidor
+        	if(send(sock_file_descriptor, text_to_server, 500, 0) < 0) {
+            		puts("Send failed");
+            		return 1;
+        	}
+
+		if (strcmp(text_to_server, "exit") == 0) {
+			break;
+		}
+    	}
+	
+    	if (n < 0) {
+        	perror("read error");
+        	exit(1);
+    	}
+	*/
     }
 
-
+    /*
     char local_socket_ip[16];
     unsigned int local_socket_port;
     struct sockaddr_in local_addr;
@@ -87,6 +129,7 @@ int main(int argc, char **argv) {
 
     printf("Endereco IP socket local: %s\n", local_socket_ip);
     printf("Porta socket local: %u\n", local_socket_port);
+    */
 
     exit(0);
 }
