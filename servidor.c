@@ -20,14 +20,16 @@ void printNewClientInformation(int connfd, struct sockaddr_in peeraddr) {
     char   buf[MAXDATASIZE];
     time_t ticks;
 
+    ticks = time(NULL);
+    printf("New client received at %.24s!!!\r\n", ctime(&ticks));
+
     char local_socket_ip[16];
     inet_ntop(AF_INET, &peeraddr.sin_addr, local_socket_ip, sizeof(local_socket_ip));
-    printf("Server accepted client connection with IP address: %s\n", local_socket_ip);
+    printf("	client IP address: %s\n", local_socket_ip);
     unsigned int local_socket_port = ntohs(peeraddr.sin_port);
-    printf("Server accepted client connection with with port: %u\n", local_socket_port);
+    printf("	client local port: %u\n", local_socket_port);
 
     ticks = time(NULL);
-    printf("Server accepted client at %.24s\r\n", ctime(&ticks));
     snprintf(buf, sizeof(buf), "Hello from server!\nTime: %.24s\r\n", ctime(&ticks));
     write(connfd, buf, strlen(buf));
 }
