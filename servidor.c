@@ -16,6 +16,44 @@
 
 #define MAXLINE 4096
 
+void checkProgramInput(int argc, char **argv) {
+    char error[MAXLINE + 1];
+    if (argc != 2) {
+        strcpy(error,"uso: ");
+        strcat(error,argv[0]);
+        strcat(error," <Port>");
+        perror(error);
+        exit(1);
+    }
+}
+
+int initiateServer(char *port) {
+    int    listenfd;
+    struct sockaddr_in servaddr;
+
+    if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+        perror("socket");
+        exit(1);
+    }
+
+    bzero(&servaddr, sizeof(servaddr));
+    servaddr.sin_family      = AF_INET;
+    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    servaddr.sin_port        = htons(atoi(port));
+
+    if (bind(listenfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
+        perror("bind");
+        exit(1);
+    }
+
+    if (listen(listenfd, LISTENQ) == -1) {
+        perror("listen");
+        exit(1);
+    }
+
+    return listenfd;
+}
+
 void printNewClientInformation(int connfd, struct sockaddr_in peeraddr) {
     time_t ticks;
     char   buf[MAXDATASIZE];
@@ -28,8 +66,6 @@ void printNewClientInformation(int connfd, struct sockaddr_in peeraddr) {
     printf("	client IP address: %s\n", local_socket_ip);
     unsigned int local_socket_port = ntohs(peeraddr.sin_port);
     printf("	client local port: %u\n", local_socket_port);
-
-
 
     snprintf(buf, sizeof(buf), 
 		    "Hello! These are the commands available:\n \
@@ -61,38 +97,8 @@ void handleClient(int connfd) {
     }
 }
 
-int main (int argc, char **argv) {
-    int    listenfd, connfd;
-    struct sockaddr_in servaddr;
-    char   error[MAXLINE + 1];
-
-    if (argc != 2) {
-        strcpy(error,"uso: ");
-        strcat(error,argv[0]);
-        strcat(error," <Port>");
-        perror(error);
-        exit(1);
-    }
-
-    if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-        perror("socket");
-        exit(1);
-    }
-
-    bzero(&servaddr, sizeof(servaddr));
-    servaddr.sin_family      = AF_INET;
-    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    servaddr.sin_port        = htons(atoi(argv[1]));
-
-    if (bind(listenfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
-        perror("bind");
-        exit(1);
-    }
-
-    if (listen(listenfd, LISTENQ) == -1) {
-        perror("listen");
-        exit(1);
-    }
+void startListenToConnections(int listenfd) {
+    int connfd;
 
     for ( ; ; ) {
         struct sockaddr_in peeraddr;
@@ -120,5 +126,15 @@ int main (int argc, char **argv) {
 
         close(connfd);
     }
+}
+
+int main (int argc, char **argv) {
+    int listenfd;
+
+    checkProgramInput(argc, argv);
+    listenfd = initiateServer(argv[1]);
+
+    startListenToConnections(listenfd);
+
     return(0);
 }
