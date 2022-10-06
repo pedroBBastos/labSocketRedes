@@ -43,12 +43,17 @@ void printNewClientInformation(int connfd, struct sockaddr_in peeraddr) {
 
 void handleClient(int connfd) {
     char received_text[500];
+    int n;
 
     for ( ; ; ) {
 	    printf("Entered server loop for client %d\n", connfd);
 	    bzero(&received_text, sizeof(received_text));
-	    read(connfd, received_text, 500);
-	    printf("Comand received from client (%d): %s \n", connfd, received_text);
+	    if( (n = read(connfd, received_text, 500)) > 0) {
+            printf("Comand received from client (%d): %s \n", connfd, received_text);
+        } else {
+            printf("Read error! Finishing client handling \n");
+            break;
+        }
 
 	    if(strcmp(received_text, "exit") == 0) {
 		    break;
@@ -59,10 +64,6 @@ void handleClient(int connfd) {
 int main (int argc, char **argv) {
     int    listenfd, connfd;
     struct sockaddr_in servaddr;
-    // char   buf[MAXDATASIZE];
-    // time_t ticks;
-    //char received_text[500];
-
     char   error[MAXLINE + 1];
 
     if (argc != 2) {
@@ -103,25 +104,19 @@ int main (int argc, char **argv) {
 
         getpeername(connfd , (struct sockaddr*) &peeraddr , (socklen_t*) &peerlen);
 
-	printNewClientInformation(connfd, peeraddr);
+	    printNewClientInformation(connfd, peeraddr);
 
-	/*
-        bzero(&received_text, sizeof(received_text));
-        read(connfd, received_text, 500);
-        printf("Mensagem recebida do client: %s \n", received_text);
-	*/
-
-	pid_t pid = fork();
-	printf("[test] pid -> %d \n", pid);
-	if (pid == 0){
+        pid_t pid = fork();
+        printf("[test] pid -> %d \n", pid);
+        if (pid == 0){
             close(listenfd);
-	    printf("[test] Inside thread (pid): %d \n", pid);
-	    handleClient(connfd);
+            printf("[test] Inside thread (pid): %d \n", pid);
+            handleClient(connfd);
+
+            printf("Closing connection with client %d \n", connfd);
             close(connfd);
             exit(0);
         }
-
-        // sleep(60); - questão 2
 
         close(connfd);
     }

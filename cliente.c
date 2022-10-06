@@ -45,91 +45,35 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    while ( (n = read(sock_file_descriptor, recvline, MAXLINE)) > 0) {
-        recvline[n] = 0;
+   bzero(&recvline, sizeof(recvline));
+   if( (n = read(sock_file_descriptor, recvline, MAXLINE)) > 0) {
         if (fputs(recvline, stdout) == EOF) {
-	    perror("fputs error");
-	    exit(1);
-	}
-
-        //printf("Type your command: \n");
-        //scanf("%[^\n]s", text_to_server);
-    }
-
-    if (n < 0) {
-            perror("read error");
+            perror("fputs error");
             exit(1);
-    }
-	
-
-
-    for ( ; ; ) {
-	printf("Type your command: \n");
-	//fscanf(stdin, "%s", text_to_server);
-	scanf("%[^\n]s", text_to_server);
-
-	printf("Sending command: \n");
-
-	//Envia mensagem para o servidor
-	if(send(sock_file_descriptor, text_to_server, 500, 0) < 0) {
-		puts("Send failed");
-		return 1;
-	}
-
-	if (strcmp(text_to_server, "exit") == 0) {
-		break;
         }
-	
-	/*
-        while ( (n = read(sock_file_descriptor, recvline, MAXLINE)) > 0) {
-		recvline[n] = 0;
-		if (fputs(recvline, stdout) == EOF) {
-            		perror("fputs error");
-            		exit(1);
-        	}
+   } else {
+        perror("read error");
+        exit(1);
+   }
 
-        	printf("Type your command: \n");
-        	scanf("%[^\n]s", text_to_server);
+   for ( ; ; ) {
+        bzero(&text_to_server, sizeof(text_to_server));
+        printf("Type your command: \n");
 
-        	//Envia mensagem para o servidor
-        	if(send(sock_file_descriptor, text_to_server, 500, 0) < 0) {
-            		puts("Send failed");
-            		return 1;
-        	}
+        fgets(text_to_server, 500, stdin);
+        text_to_server[strcspn(text_to_server, "\n")] = 0;
 
-		if (strcmp(text_to_server, "exit") == 0) {
-			break;
-		}
-    	}
-	
-    	if (n < 0) {
-        	perror("read error");
-        	exit(1);
-    	}
-	*/
-    }
+        //Envia mensagem para o servidor
+        if(send(sock_file_descriptor, text_to_server, 500, 0) < 0) {
+            puts("Send failed");
+            return 1;
+        }
 
-    /*
-    char local_socket_ip[16];
-    unsigned int local_socket_port;
-    struct sockaddr_in local_addr;
-
-    bzero(&local_addr, sizeof(local_addr));
-    socklen_t len = sizeof(local_addr);
-    
-    //obtendo informações do socket local.
-    //sock_file_descriptor foi criado previamente para se comunicar com o servidor
-    getsockname(sock_file_descriptor, (struct sockaddr *) &local_addr, &len);
-
-    // função inet_ntop -> para converter de endereço binário para formato texto
-    inet_ntop(AF_INET, &local_addr.sin_addr, local_socket_ip, sizeof(local_socket_ip));
-
-    // função ntohs -> conversão endereço de rede para host
-    local_socket_port = ntohs(local_addr.sin_port);
-
-    printf("Endereco IP socket local: %s\n", local_socket_ip);
-    printf("Porta socket local: %u\n", local_socket_port);
-    */
-
-    exit(0);
+        if(strcmp(text_to_server, "exit") == 0) {
+            printf("Finishing interaction with server\n");
+		    break;
+	    }
+   }
+   
+   exit(0);
 }
