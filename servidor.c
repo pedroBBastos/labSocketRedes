@@ -77,6 +77,18 @@ void printNewClientInformation(int connfd, struct sockaddr_in peeraddr) {
     write(connfd, buf, strlen(buf));
 }
 
+void writeClienteResponseIntoFile(char received_text[500]) {
+    FILE *out_file = fopen("server-output", "a");
+    if (out_file == NULL) {
+        printf("Error! Could not open file\n");
+        exit(-1);
+    }
+    fprintf(out_file, "----------------------------\n");
+    strcat(received_text, "\n");
+    fprintf(out_file, received_text);
+    fprintf(out_file, "----------------------------\n");
+}
+
 void handleClient(int connfd) {
     char received_text[500];
     int n;
@@ -86,6 +98,7 @@ void handleClient(int connfd) {
 	    bzero(&received_text, sizeof(received_text));
 	    if( (n = read(connfd, received_text, 500)) > 0) {
             printf("Comand received from client (%d): %s \n", connfd, received_text);
+            writeClienteResponseIntoFile(received_text);            
         } else {
             printf("Read error! Finishing client handling \n");
             break;
