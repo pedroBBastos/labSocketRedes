@@ -23,10 +23,32 @@ void checkProgramInput(int argc, char **argv) {
     }
 }
 
+void printLocalSocketInfo(int socket_file_descriptor) {
+    char local_socket_ip[16];
+    unsigned int local_socket_port;
+    struct sockaddr_in local_addr;
+
+    bzero(&local_addr, sizeof(local_addr));
+    socklen_t len = sizeof(local_addr);
+    
+    //obtendo informações do socket local.
+    //sock_file_descriptor foi criado previamente para se comunicar com o servidor
+    getsockname(socket_file_descriptor, (struct sockaddr *) &local_addr, &len);
+
+    // função inet_ntop -> para converter de endereço binário para formato texto
+    inet_ntop(AF_INET, &local_addr.sin_addr, local_socket_ip, sizeof(local_socket_ip));
+
+    // função ntohs -> conversão endereço de rede para host
+    local_socket_port = ntohs(local_addr.sin_port);
+
+    printf("Local socket IP Address: %s\n", local_socket_ip);
+    printf("Local socket port: %u\n", local_socket_port);
+}
+
 int conectToServer(char *address, char *port) {
-    int sock_file_descriptor;
+    int socket_file_descriptor;
     struct sockaddr_in servaddr;
-    if ( (sock_file_descriptor = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+    if ( (socket_file_descriptor = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         perror("socket error");
         exit(1);
     }
@@ -39,20 +61,24 @@ int conectToServer(char *address, char *port) {
         exit(1);
     }
 
-    if (connect(sock_file_descriptor, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0) {
+    if (connect(socket_file_descriptor, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0) {
         perror("connect error");
         exit(1);
     }
 
-    return sock_file_descriptor;
+    printf("Server IP Address: %s\n", address);
+    printf("Server port: %s\n", port);
+    printLocalSocketInfo(socket_file_descriptor);
+
+    return socket_file_descriptor;
 }
 
-void readCommandOptionsFromServer(int sock_file_descriptor) {
+void readCommandOptionsFromServer(int socket_file_descriptor) {
     int n;
     char recvline[MAXLINE + 1];
 
     bzero(&recvline, sizeof(recvline));
-    if( (n = read(sock_file_descriptor, recvline, MAXLINE)) > 0) {
+    if( (n = read(socket_file_descriptor, recvline, MAXLINE)) > 0) {
         if (fputs(recvline, stdout) == EOF) {
             perror("fputs error");
             exit(1);
@@ -63,7 +89,7 @@ void readCommandOptionsFromServer(int sock_file_descriptor) {
     }
 }
 
-void interactWithServer(int sock_file_descriptor) {
+void interactWithServer(int socket_file_descriptor) {
     char text_to_server[500];
     for ( ; ; ) {
         bzero(&text_to_server, sizeof(text_to_server));
@@ -73,7 +99,7 @@ void interactWithServer(int sock_file_descriptor) {
         text_to_server[strcspn(text_to_server, "\n")] = 0;
 
         //Envia mensagem para o servidor
-        if(send(sock_file_descriptor, text_to_server, 500, 0) < 0) {
+        if(send(socket_file_descriptor, text_to_server, 500, 0) < 0) {
             puts("Send failed");
             exit(1);
         }
@@ -86,13 +112,13 @@ void interactWithServer(int sock_file_descriptor) {
 }
 
 int main(int argc, char **argv) {
-    int sock_file_descriptor;
+    int socket_file_descriptor;
 
     checkProgramInput(argc, argv);
-    sock_file_descriptor = conectToServer(argv[1], argv[2]);
+    socket_file_descriptor = conectToServer(argv[1], argv[2]);
 
-    readCommandOptionsFromServer(sock_file_descriptor);
-    interactWithServer(sock_file_descriptor);
+    readCommandOptionsFromServer(socket_file_descriptor);
+    interactWithServer(socket_file_descriptor);
     
     exit(0);
 }
