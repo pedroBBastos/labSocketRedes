@@ -16,6 +16,11 @@
 
 #define MAXLINE 4096
 
+typedef struct {
+    char client_ip[16];
+    unsigned int client_socket_port;
+} ClientInformation;
+
 void checkProgramInput(int argc, char **argv) {
     char error[MAXLINE + 1];
     if (argc != 2) {
@@ -54,7 +59,8 @@ int initiateServer(char *port) {
     return listenfd;
 }
 
-void printNewClientInformation(int connfd, struct sockaddr_in peeraddr) {
+ClientInformation getClientInformation(int connfd, struct sockaddr_in peeraddr) {
+    ClientInformation clientInfo;
     time_t ticks;
 
     ticks = time(NULL);
@@ -65,23 +71,49 @@ void printNewClientInformation(int connfd, struct sockaddr_in peeraddr) {
     printf("	client IP address: %s\n", local_socket_ip);
     unsigned int local_socket_port = ntohs(peeraddr.sin_port);
     printf("	client local port: %u\n", local_socket_port);
+
+    strcpy(clientInfo.client_ip, local_socket_ip);
+    clientInfo.client_socket_port = local_socket_port;
+
+    return clientInfo;
 }
 
-void writeClienteResponseIntoFile(char received_text[500]) {
+void readClientCommandExecutionResponse(int connfd,
+                                        char currentCommand[40],
+                                        ClientInformation clientInfo) {
+    char received_text[500];
+    int n;
+
     FILE *out_file = fopen("server-output", "a");
     if (out_file == NULL) {
         printf("Error! Could not open file\n");
         exit(-1);
     }
-    // fprintf(out_file, "----------------------------\n");
-    // strcat(received_text, "\n");
-    fprintf(out_file, received_text);
-    // fprintf(out_file, "----------------------------\n");
+
+    fprintf(out_file, "---------------------------------------\n");
+    fprintf(out_file, "Client IP Address: %s\n", clientInfo.client_ip);
+    fprintf(out_file, "Client local socket port: %d\n", clientInfo.client_socket_port);
+    fprintf(out_file, "Client response to the command '%s': \n", currentCommand);
+
+    for ( ; ; ) {
+        bzero(&received_text, sizeof(received_text));
+        if( (n = read(connfd, received_text, 500)) > 0) {
+            if(strcmp(received_text, "end-command-execution") == 0) {
+                printf("Command totally executed!!\n");
+                break;
+            } else {
+                fprintf(out_file, received_text);
+            }
+        } else {
+            printf("Read error! Finishing client handling \n");
+            break;
+        }
+    }
+
     fclose(out_file);
 }
 
-void handleClient(int connfd) {
-    char received_text[500];
+void handleClient(int connfd, ClientInformation clientInfo) {
     int n;
 
     char commands[4][40];
@@ -97,34 +129,8 @@ void handleClient(int connfd) {
         if ( (n = write(connfd, commands[i], strlen(commands[i]))) > 0 && 
                 strcmp(commands[i], "exit") != 0) {
             printf("Entered if\n");
-            for ( ; ; ) {
-                bzero(&received_text, sizeof(received_text));
-                if( (n = read(connfd, received_text, 500)) > 0) {
-                    if(strcmp(received_text, "end-command-execution") == 0) {
-                        printf("Command totally executed!!\n");
-                        break;
-                    } else {
-                        writeClienteResponseIntoFile(received_text);
-                    }
-                } else {
-                    printf("Read error! Finishing client handling \n");
-                    break;
-                }
-            }
+            readClientCommandExecutionResponse(connfd, commands[i], clientInfo);
         }
-
-        // sleep(3); // sleep needed to not overload client buffer with too many comands.
-        //           // Otherwise, the client would read the next command as a concatenation with the others and
-        //           // would try to execute a non-existing command.
-
-	    // bzero(&received_text, sizeof(received_text));
-	    // if( (n = read(connfd, received_text, 500)) > 0) {
-        //     printf("Comand received from client (%d): %s \n", connfd, received_text);
-        //     writeClienteResponseIntoFile(received_text);            
-        // } else {
-        //     printf("Read error! Finishing client handling \n");
-        //     break;
-        // }
     }
 
     printf("All commands available sent. Finishing client handling. \n");
@@ -143,14 +149,14 @@ void startListenToConnections(int listenfd) {
 
         getpeername(connfd , (struct sockaddr*) &peeraddr , (socklen_t*) &peerlen);
 
-	    printNewClientInformation(connfd, peeraddr);
+	    ClientInformation clientInfo = getClientInformation(connfd, peeraddr);
 
         pid_t pid = fork();
-        printf("[test] pid -> %d \n", pid);
+        // printf("[test] pid -> %d \n", pid);
         if (pid == 0){
             close(listenfd);
-            printf("[test] Inside thread (pid): %d \n", pid);
-            handleClient(connfd);
+            // printf("[test] Inside procces (pid): %d \n", pid);
+            handleClient(connfd, clientInfo);
 
             printf("Closing connection with client %d \n", connfd);
             close(connfd);
