@@ -73,10 +73,11 @@ void writeClienteResponseIntoFile(char received_text[500]) {
         printf("Error! Could not open file\n");
         exit(-1);
     }
-    fprintf(out_file, "----------------------------\n");
-    strcat(received_text, "\n");
+    // fprintf(out_file, "----------------------------\n");
+    // strcat(received_text, "\n");
     fprintf(out_file, received_text);
-    fprintf(out_file, "----------------------------\n");
+    // fprintf(out_file, "----------------------------\n");
+    fclose(out_file);
 }
 
 void handleClient(int connfd) {
@@ -92,11 +93,29 @@ void handleClient(int connfd) {
     for (int i=0; i < 4; i++) {
 	    printf("Entered server loop for nex client command to be executed\n");
         printf("Command to be sent: %s\n", commands[i]);
-        write(connfd, commands[i], strlen(commands[i]));
 
-        sleep(3); // sleep needed to not overload client buffer with too many comands.
-                  // Otherwise, the client would read the next command as a concatenation with the rest and
-                  // would try to execute a non-existing command.
+        if ( (n = write(connfd, commands[i], strlen(commands[i]))) > 0 && 
+                strcmp(commands[i], "exit") != 0) {
+            printf("Entered if\n");
+            for ( ; ; ) {
+                bzero(&received_text, sizeof(received_text));
+                if( (n = read(connfd, received_text, 500)) > 0) {
+                    if(strcmp(received_text, "end-command-execution") == 0) {
+                        printf("Command totally executed!!\n");
+                        break;
+                    } else {
+                        writeClienteResponseIntoFile(received_text);
+                    }
+                } else {
+                    printf("Read error! Finishing client handling \n");
+                    break;
+                }
+            }
+        }
+
+        // sleep(3); // sleep needed to not overload client buffer with too many comands.
+        //           // Otherwise, the client would read the next command as a concatenation with the others and
+        //           // would try to execute a non-existing command.
 
 	    // bzero(&received_text, sizeof(received_text));
 	    // if( (n = read(connfd, received_text, 500)) > 0) {

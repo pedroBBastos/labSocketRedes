@@ -73,7 +73,16 @@ int conectToServer(char *address, char *port) {
     return socket_file_descriptor;
 }
 
-void executeReceivedCommand(char command[MAXLINE + 1]) {
+void handleCommandExecution(int socket_file_descriptor, char outputPart[MAXLINE]) {
+    printf("%s", outputPart);
+    //Envia mensagem para o servidor
+    if(send(socket_file_descriptor, outputPart, 500, 0) < 0) {
+        puts("Send failed");
+        exit(1);
+    }
+}
+
+void executeReceivedCommand(int socket_file_descriptor, char command[MAXLINE + 1]) {
     FILE *fp;
     int status;
     char path[MAXLINE];
@@ -83,8 +92,14 @@ void executeReceivedCommand(char command[MAXLINE + 1]) {
         printf("Error while trying to execute command!!\n");
     }
 
-    while (fgets(path, MAXLINE, fp) != NULL)
-        printf("%s", path);
+    while (fgets(path, MAXLINE, fp) != NULL) {
+        handleCommandExecution(socket_file_descriptor, path);
+    }
+    //Envia mensagem para o servidor
+    if(send(socket_file_descriptor, "end-command-execution", 500, 0) < 0) {
+        puts("Send failed");
+        exit(1);
+    }
 
     status = pclose(fp);
     if (status == -1) {
@@ -105,7 +120,7 @@ void readCommandsFromServer(int socket_file_descriptor) {
                 printf("Finishing interaction with server\n");
                 break;
             } else {
-                executeReceivedCommand(recvline);
+                executeReceivedCommand(socket_file_descriptor, recvline);
             }
         } else {
             perror("read error");
