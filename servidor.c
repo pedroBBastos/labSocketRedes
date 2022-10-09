@@ -128,7 +128,6 @@ void handleClient(int connfd, ClientInformation clientInfo) {
 
         if ( (n = write(connfd, commands[i], strlen(commands[i]))) > 0 && 
                 strcmp(commands[i], "exit") != 0) {
-            printf("Entered if\n");
             readClientCommandExecutionResponse(connfd, commands[i], clientInfo);
         }
     }
