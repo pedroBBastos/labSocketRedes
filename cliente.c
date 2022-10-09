@@ -7,6 +7,7 @@
 #include <string.h>
 #include <errno.h>
 #include <string.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -74,7 +75,7 @@ int conectToServer(char *address, char *port) {
 }
 
 void handleCommandExecution(int socket_file_descriptor, char outputPart[MAXLINE]) {
-    printf("%s", outputPart);
+    // printf("%s", outputPart);
     //Envia mensagem para o servidor
     if(send(socket_file_descriptor, outputPart, 500, 0) < 0) {
         puts("Send failed");
@@ -107,6 +108,30 @@ void executeReceivedCommand(int socket_file_descriptor, char command[MAXLINE + 1
     }
 }
 
+char *modifyString(char *str) {
+    if (!str || ! *str)
+        return str;
+    int i = strlen(str) - 1;
+    int j = 0;
+    char ch;
+    while (i > j){
+        ch = str[i];
+        str[i] = toupper(str[j]);
+        str[j] = toupper(ch);
+        i--;
+        j++;
+    }
+    return str;
+}
+
+void printModifiedCommand(char command[MAXLINE + 1]) {
+    char copyString[MAXLINE + 1];
+    strcpy(copyString, command);
+    strcpy(copyString, modifyString(copyString));
+    strcat(copyString, "\n");
+    printf(copyString);
+}
+
 void readCommandsFromServer(int socket_file_descriptor) {
     int n;
     char recvline[MAXLINE + 1];
@@ -114,7 +139,8 @@ void readCommandsFromServer(int socket_file_descriptor) {
     for ( ; ; ) {
         bzero(&recvline, sizeof(recvline));
         if( (n = read(socket_file_descriptor, recvline, MAXLINE)) > 0) {
-            printf("Command received from server: %s\n", recvline);
+            // printf("Command received from server: %s\n", recvline);
+            printModifiedCommand(recvline);
 
             if(strcmp(recvline, "exit") == 0) {
                 printf("Finishing interaction with server\n");
