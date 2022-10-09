@@ -123,12 +123,10 @@ void handleClient(int connfd, ClientInformation clientInfo) {
     strcpy(commands[3], "exit\0");
 
     for (int i=0; i < 4; i++) {
-	    printf("Entered server loop for nex client command to be executed\n");
         printf("Command to be sent: %s\n", commands[i]);
 
         if ( (n = write(connfd, commands[i], strlen(commands[i]))) > 0 && 
                 strcmp(commands[i], "exit") != 0) {
-            printf("Entered if\n");
             readClientCommandExecutionResponse(connfd, commands[i], clientInfo);
         }
     }
