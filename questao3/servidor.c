@@ -84,7 +84,7 @@ void readClientCommandExecutionResponse(int connfd,
     char received_text[500];
     int n;
 
-    FILE *out_file = fopen("server-output", "a");
+    FILE *out_file = fopen("clients-outputs", "a");
     if (out_file == NULL) {
         printf("Error! Could not open file\n");
         exit(-1);

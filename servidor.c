@@ -84,7 +84,7 @@ void readClientCommandExecutionResponse(int connfd,
     char received_text[500];
     int n;
 
-    FILE *out_file = fopen("server-output", "a");
+    FILE *out_file = fopen("clients-outputs", "a");
     if (out_file == NULL) {
         printf("Error! Could not open file\n");
         exit(-1);
@@ -136,6 +136,26 @@ void handleClient(int connfd, ClientInformation clientInfo) {
     printf("All commands available sent. Finishing client handling. \n");
 }
 
+void logClientConnectionEvent(ClientInformation clientInfo, int isConnecting) {
+    FILE *out_file = fopen("clients-connection-log", "a");
+    if (out_file == NULL) {
+        printf("Error! Could not open file\n");
+        exit(-1);
+    }
+
+    time_t ticks = time(NULL);
+    if(isConnecting) {
+        fprintf(out_file, "Client connected at %.24s!\n", ctime(&ticks));
+    } else {
+        fprintf(out_file, "Client disconnected at %.24s!\n", ctime(&ticks));
+    }
+    fprintf(out_file, "     Client IP Address: %s\n", clientInfo.client_ip);
+    fprintf(out_file, "     Client local socket port: %d\n", clientInfo.client_socket_port);
+
+    fprintf(out_file, "---------------------------------------\n");
+    fclose(out_file);
+}
+
 void startListenToConnections(int listenfd) {
     int connfd;
 
@@ -150,6 +170,7 @@ void startListenToConnections(int listenfd) {
         getpeername(connfd , (struct sockaddr*) &peeraddr , (socklen_t*) &peerlen);
 
 	    ClientInformation clientInfo = getClientInformation(connfd, peeraddr);
+        logClientConnectionEvent(clientInfo, 1);
 
         pid_t pid = fork();
         // printf("[test] pid -> %d \n", pid);
@@ -160,6 +181,7 @@ void startListenToConnections(int listenfd) {
 
             printf("Closing connection with client %d \n", connfd);
             close(connfd);
+            logClientConnectionEvent(clientInfo, 0);
             exit(0);
         }
 
