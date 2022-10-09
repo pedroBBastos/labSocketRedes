@@ -56,7 +56,6 @@ int initiateServer(char *port) {
 
 void printNewClientInformation(int connfd, struct sockaddr_in peeraddr) {
     time_t ticks;
-    char   buf[MAXDATASIZE];
 
     ticks = time(NULL);
     printf("New client received at %.24s!!!\r\n", ctime(&ticks));
@@ -66,15 +65,6 @@ void printNewClientInformation(int connfd, struct sockaddr_in peeraddr) {
     printf("	client IP address: %s\n", local_socket_ip);
     unsigned int local_socket_port = ntohs(peeraddr.sin_port);
     printf("	client local port: %u\n", local_socket_port);
-
-    snprintf(buf, sizeof(buf), 
-		    "Hello! These are the commands available:\n \
-		    	atack\n \
-			defend\n \
-			hide\n \
-			transform\n \
-			exit \nChoose wisely..");
-    write(connfd, buf, strlen(buf));
 }
 
 void writeClienteResponseIntoFile(char received_text[500]) {
@@ -93,21 +83,28 @@ void handleClient(int connfd) {
     char received_text[500];
     int n;
 
-    for ( ; ; ) {
-	    printf("Entered server loop for client %d\n", connfd);
-	    bzero(&received_text, sizeof(received_text));
-	    if( (n = read(connfd, received_text, 500)) > 0) {
-            printf("Comand received from client (%d): %s \n", connfd, received_text);
-            writeClienteResponseIntoFile(received_text);            
-        } else {
-            printf("Read error! Finishing client handling \n");
-            break;
-        }
+    char commands[4][40];
+    strcpy(commands[0], "ls\0"); 
+    strcpy(commands[1], "pwd\0");
+    strcpy(commands[2], "ls -l\0");
+    strcpy(commands[3], "exit\0");
 
-	    if(strcmp(received_text, "exit") == 0) {
-		    break;
-	    }
+    for (int i=0; i < 4; i++) {
+	    printf("Entered server loop for nex client command to be executed\n");
+        printf("Command to be sent: %s\n", commands[i]);
+        write(connfd, commands[i], strlen(commands[i]));
+
+	    // bzero(&received_text, sizeof(received_text));
+	    // if( (n = read(connfd, received_text, 500)) > 0) {
+        //     printf("Comand received from client (%d): %s \n", connfd, received_text);
+        //     writeClienteResponseIntoFile(received_text);            
+        // } else {
+        //     printf("Read error! Finishing client handling \n");
+        //     break;
+        // }
     }
+
+    printf("All commands available sent. Finishing client handling. \n");
 }
 
 void startListenToConnections(int listenfd) {

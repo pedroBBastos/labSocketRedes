@@ -73,19 +73,23 @@ int conectToServer(char *address, char *port) {
     return socket_file_descriptor;
 }
 
-void readCommandOptionsFromServer(int socket_file_descriptor) {
+void readCommandsFromServer(int socket_file_descriptor) {
     int n;
     char recvline[MAXLINE + 1];
 
-    bzero(&recvline, sizeof(recvline));
-    if( (n = read(socket_file_descriptor, recvline, MAXLINE)) > 0) {
-        if (fputs(recvline, stdout) == EOF) {
-            perror("fputs error");
+    for ( ; ; ) {
+        bzero(&recvline, sizeof(recvline));
+        if( (n = read(socket_file_descriptor, recvline, MAXLINE)) > 0) {
+            printf("Command received from server: %s\n", recvline);
+
+            if(strcmp(recvline, "exit") == 0) {
+                printf("Finishing interaction with server\n");
+                break;
+            }
+        } else {
+            perror("read error");
             exit(1);
         }
-    } else {
-        perror("read error");
-        exit(1);
     }
 }
 
@@ -117,8 +121,8 @@ int main(int argc, char **argv) {
     checkProgramInput(argc, argv);
     socket_file_descriptor = conectToServer(argv[1], argv[2]);
 
-    readCommandOptionsFromServer(socket_file_descriptor);
-    interactWithServer(socket_file_descriptor);
+    readCommandsFromServer(socket_file_descriptor);
+    // interactWithServer(socket_file_descriptor);
     
     exit(0);
 }
