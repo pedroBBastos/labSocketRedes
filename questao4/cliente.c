@@ -129,28 +129,6 @@ void readCommandsFromServer(int socket_file_descriptor) {
     }
 }
 
-void interactWithServer(int socket_file_descriptor) {
-    char text_to_server[500];
-    for ( ; ; ) {
-        bzero(&text_to_server, sizeof(text_to_server));
-        printf("Type your command: \n");
-
-        fgets(text_to_server, 500, stdin);
-        text_to_server[strcspn(text_to_server, "\n")] = 0;
-
-        //Envia mensagem para o servidor
-        if(send(socket_file_descriptor, text_to_server, 500, 0) < 0) {
-            puts("Send failed");
-            exit(1);
-        }
-
-        if(strcmp(text_to_server, "exit") == 0) {
-            printf("Finishing interaction with server\n");
-            break;
-        }
-    }
-}
-
 int main(int argc, char **argv) {
     int socket_file_descriptor;
 
