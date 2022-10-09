@@ -94,6 +94,10 @@ void handleClient(int connfd) {
         printf("Command to be sent: %s\n", commands[i]);
         write(connfd, commands[i], strlen(commands[i]));
 
+        sleep(3); // sleep needed to not overload client buffer with too many comands.
+                  // Otherwise, the client would read the next command as a concatenation with the rest and
+                  // would try to execute a non-existing command.
+
 	    // bzero(&received_text, sizeof(received_text));
 	    // if( (n = read(connfd, received_text, 500)) > 0) {
         //     printf("Comand received from client (%d): %s \n", connfd, received_text);

