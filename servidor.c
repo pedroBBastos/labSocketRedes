@@ -51,6 +51,7 @@ int initiateServer(char *port, int backlog) {
         exit(1);
     }
 
+    printf("Essa eh o backlog -> %d\n", backlog);
     if (listen(listenfd, backlog) == -1) {
         perror("listen");
         exit(1);
@@ -182,7 +183,7 @@ void startListenToConnections(int listenfd) {
             // // printf("[test] Inside procces (pid): %d \n", pid);
             // handleClient(connfd, clientInfo);
 
-            sleep(5);
+            sleep(15);
 
             // printf("Closing connection with client %d \n", connfd);
             close(connfd);
@@ -190,7 +191,9 @@ void startListenToConnections(int listenfd) {
             exit(0);
         }
 
-        close(connfd);
+        // sleep(15);
+
+        // close(connfd);
     }
 }
 

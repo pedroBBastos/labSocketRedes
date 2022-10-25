@@ -44,6 +44,8 @@ void printLocalSocketInfo(int socket_file_descriptor) {
 
     // printf("Local socket IP Address: %s\n", local_socket_ip);
     // printf("Local socket port: %u\n", local_socket_port);
+
+    // sleep(20);
 }
 
 int conectToServer(char *address, char *port) {
@@ -69,7 +71,7 @@ int conectToServer(char *address, char *port) {
 
     // printf("Server IP Address: %s\n", address);
     // printf("Server port: %s\n", port);
-    printLocalSocketInfo(socket_file_descriptor);
+    // printLocalSocketInfo(socket_file_descriptor);
 
     return socket_file_descriptor;
 }
@@ -184,6 +186,7 @@ int main(int argc, char **argv) {
     socket_file_descriptor = conectToServer(argv[1], argv[2]);
 
     // readCommandsFromServer(socket_file_descriptor);
+    sleep(15);
     
     exit(0);
 }

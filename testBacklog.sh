@@ -1,9 +1,10 @@
 #!/bin/bash
 
-for counter in $(seq 1 10); do 
+# ./cliente 0.0.0.0 44333 &
+
+for counter in $(seq 1 20); do 
 	echo "Connecting to server";
-	./cliente 0.0.0.0 44333
-	netstat -taulpn | grep 44333
+	./cliente 0.0.0.0 44333 &
 done
 
-netstat -taulpn | grep 44333
+netstat -taulpn | grep 44333 | grep "\./servidor"
