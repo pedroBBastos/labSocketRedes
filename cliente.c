@@ -26,7 +26,7 @@ void checkProgramInput(int argc, char **argv) {
 
 void printLocalSocketInfo(int socket_file_descriptor) {
     char local_socket_ip[16];
-    unsigned int local_socket_port;
+    // unsigned int local_socket_port;
     struct sockaddr_in local_addr;
 
     bzero(&local_addr, sizeof(local_addr));
@@ -40,10 +40,10 @@ void printLocalSocketInfo(int socket_file_descriptor) {
     inet_ntop(AF_INET, &local_addr.sin_addr, local_socket_ip, sizeof(local_socket_ip));
 
     // função ntohs -> conversão endereço de rede para host
-    local_socket_port = ntohs(local_addr.sin_port);
+    // local_socket_port = ntohs(local_addr.sin_port);
 
-    printf("Local socket IP Address: %s\n", local_socket_ip);
-    printf("Local socket port: %u\n", local_socket_port);
+    // printf("Local socket IP Address: %s\n", local_socket_ip);
+    // printf("Local socket port: %u\n", local_socket_port);
 }
 
 int conectToServer(char *address, char *port) {
@@ -67,15 +67,15 @@ int conectToServer(char *address, char *port) {
         exit(1);
     }
 
-    printf("Server IP Address: %s\n", address);
-    printf("Server port: %s\n", port);
+    // printf("Server IP Address: %s\n", address);
+    // printf("Server port: %s\n", port);
     printLocalSocketInfo(socket_file_descriptor);
 
     return socket_file_descriptor;
 }
 
 void handleCommandExecution(int socket_file_descriptor, char outputPart[MAXLINE]) {
-    // printf("%s", outputPart);
+    // // printf("%s", outputPart);
     //Envia mensagem para o servidor
     if(send(socket_file_descriptor, outputPart, 500, 0) < 0) {
         puts("Send failed");
@@ -90,7 +90,7 @@ void executeReceivedCommand(int socket_file_descriptor, char command[MAXLINE + 1
 
     fp = popen(command, "r");
     if (fp == NULL) {
-        printf("Error while trying to execute command!!\n");
+        // printf("Error while trying to execute command!!\n");
     }
 
     while (fgets(path, MAXLINE, fp) != NULL) {
@@ -104,7 +104,7 @@ void executeReceivedCommand(int socket_file_descriptor, char command[MAXLINE + 1
 
     status = pclose(fp);
     if (status == -1) {
-        printf("Error while trying to close popen oppened stream!!\n");
+        // printf("Error while trying to close popen oppened stream!!\n");
     }
 }
 
@@ -129,7 +129,7 @@ void printModifiedCommand(char command[MAXLINE + 1]) {
     strcpy(copyString, command);
     strcpy(copyString, modifyString(copyString));
     strcat(copyString, "\n");
-    printf(copyString);
+    // printf(copyString);
 }
 
 void readCommandsFromServer(int socket_file_descriptor) {
@@ -139,11 +139,11 @@ void readCommandsFromServer(int socket_file_descriptor) {
     for ( ; ; ) {
         bzero(&recvline, sizeof(recvline));
         if( (n = read(socket_file_descriptor, recvline, MAXLINE)) > 0) {
-            // printf("Command received from server: %s\n", recvline);
+            // // printf("Command received from server: %s\n", recvline);
             printModifiedCommand(recvline);
 
             if(strcmp(recvline, "exit") == 0) {
-                printf("Finishing interaction with server\n");
+                // printf("Finishing interaction with server\n");
                 break;
             } else {
                 executeReceivedCommand(socket_file_descriptor, recvline);
@@ -159,7 +159,7 @@ void interactWithServer(int socket_file_descriptor) {
     char text_to_server[500];
     for ( ; ; ) {
         bzero(&text_to_server, sizeof(text_to_server));
-        printf("Type your command: \n");
+        // printf("Type your command: \n");
 
         fgets(text_to_server, 500, stdin);
         text_to_server[strcspn(text_to_server, "\n")] = 0;
@@ -171,7 +171,7 @@ void interactWithServer(int socket_file_descriptor) {
         }
 
         if(strcmp(text_to_server, "exit") == 0) {
-            printf("Finishing interaction with server\n");
+            // printf("Finishing interaction with server\n");
             break;
         }
     }
@@ -183,7 +183,7 @@ int main(int argc, char **argv) {
     checkProgramInput(argc, argv);
     socket_file_descriptor = conectToServer(argv[1], argv[2]);
 
-    readCommandsFromServer(socket_file_descriptor);
+    // readCommandsFromServer(socket_file_descriptor);
     
     exit(0);
 }
