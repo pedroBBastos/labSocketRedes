@@ -161,6 +161,10 @@ void startListenToConnections(int listenfd) {
     int connfd;
 
     for ( ; ; ) {
+        printf("bla");
+        sleep(15);
+        printf("cleh");
+
         struct sockaddr_in peeraddr;
         socklen_t peerlen;
         if ((connfd = accept(listenfd, (struct sockaddr *) NULL, NULL)) == -1 ) {
@@ -183,7 +187,7 @@ void startListenToConnections(int listenfd) {
             // // printf("[test] Inside procces (pid): %d \n", pid);
             // handleClient(connfd, clientInfo);
 
-            sleep(15);
+            // sleep(15);
 
             // printf("Closing connection with client %d \n", connfd);
             close(connfd);
@@ -193,7 +197,7 @@ void startListenToConnections(int listenfd) {
 
         // sleep(15);
 
-        // close(connfd);
+        close(connfd);
     }
 }
 
