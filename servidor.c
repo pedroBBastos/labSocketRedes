@@ -6,10 +6,12 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <signal.h>
 
 #define LISTENQ 10
 #define MAXDATASIZE 500
@@ -20,6 +22,15 @@ typedef struct {
     char client_ip[16];
     unsigned int client_socket_port;
 } ClientInformation;
+
+void sig_chld(int signo) {
+    pid_t pid;
+    int stat;
+    printf("Called sig_chld \n");
+    while ( (pid = waitpid(-1, &stat, WNOHANG)) > 0)
+        printf("child %d terminated\n", pid);
+    return;
+}
 
 void checkProgramInput(int argc, char **argv) {
     char error[MAXLINE + 1];
@@ -62,9 +73,9 @@ int initiateServer(char *port, int backlog) {
 
 ClientInformation getClientInformation(int connfd, struct sockaddr_in peeraddr) {
     ClientInformation clientInfo;
-    time_t ticks;
+    // time_t ticks;
 
-    ticks = time(NULL);
+    // ticks = time(NULL);
     // printf("New client received at %.24s!!!\r\n", ctime(&ticks));
 
     char local_socket_ip[16];
@@ -90,11 +101,6 @@ void readClientCommandExecutionResponse(int connfd,
         // printf("Error! Could not open file\n");
         exit(-1);
     }
-
-    // printf(out_file, "---------------------------------------\n");
-    // printf(out_file, "Client IP Address: %s\n", clientInfo.client_ip);
-    // printf(out_file, "Client local socket port: %d\n", clientInfo.client_socket_port);
-    // printf(out_file, "Client response to the command '%s': \n", currentCommand);
 
     for ( ; ; ) {
         bzero(&received_text, sizeof(received_text));
@@ -125,45 +131,25 @@ void handleClient(int connfd, ClientInformation clientInfo) {
     
 
     for (int i=0; i < 4; i++) {
-	    // printf("Entered server loop for nex client command to be executed\n");
-        // printf("Command to be sent: %s\n", commands[i]);
-
         if ( (n = write(connfd, commands[i], strlen(commands[i]))) > 0 && 
                 strcmp(commands[i], "exit") != 0) {
             readClientCommandExecutionResponse(connfd, commands[i], clientInfo);
         }
     }
-
-    // printf("All commands available sent. Finishing client handling. \n");
-}
-
-void logClientConnectionEvent(ClientInformation clientInfo, int isConnecting) {
-    FILE *out_file = fopen("clients-connection-log", "a");
-    if (out_file == NULL) {
-        // printf("Error! Could not open file\n");
-        exit(-1);
-    }
-
-    time_t ticks = time(NULL);
-    if(isConnecting) {
-        // printf(out_file, "Client connected at %.24s!\n", ctime(&ticks));
-    } else {
-        // printf(out_file, "Client disconnected at %.24s!\n", ctime(&ticks));
-    }
-    // printf(out_file, "     Client IP Address: %s\n", clientInfo.client_ip);
-    // printf(out_file, "     Client local socket port: %d\n", clientInfo.client_socket_port);
-
-    // printf(out_file, "---------------------------------------\n");
-    fclose(out_file);
 }
 
 void startListenToConnections(int listenfd) {
     int connfd;
 
-    for ( ; ; ) {
-        printf("bla");
-        sleep(15);
-        printf("cleh");
+    printf("before signal \n");
+    __sighandler_t asd = signal(SIGCHLD, sig_chld); /* must call waitpid() */
+    if(asd != NULL) {
+        printf("NULL \n");    
+    }
+    printf("after signal \n");
+
+    for ( ; ; ) {        
+        sleep(10);
 
         struct sockaddr_in peeraddr;
         socklen_t peerlen;
@@ -175,13 +161,11 @@ void startListenToConnections(int listenfd) {
         getpeername(connfd , (struct sockaddr*) &peeraddr , (socklen_t*) &peerlen);
 
 	    ClientInformation clientInfo = getClientInformation(connfd, peeraddr);
-        logClientConnectionEvent(clientInfo, 1);
 
         printf("Client IP Address: %s\n", clientInfo.client_ip);
         printf("Client local socket port: %d\n", clientInfo.client_socket_port);
 
         pid_t pid = fork();
-        // // printf("[test] pid -> %d \n", pid);
         if (pid == 0){
             close(listenfd);
             // // printf("[test] Inside procces (pid): %d \n", pid);
@@ -191,11 +175,8 @@ void startListenToConnections(int listenfd) {
 
             // printf("Closing connection with client %d \n", connfd);
             close(connfd);
-            logClientConnectionEvent(clientInfo, 0);
             exit(0);
         }
-
-        // sleep(15);
 
         close(connfd);
     }
