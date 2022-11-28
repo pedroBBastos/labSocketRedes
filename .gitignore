@@ -1,2 +1,6 @@
 cliente
 servidor
+.vscode/
+clients-connection-log
+clients-outputs
+entregas/
