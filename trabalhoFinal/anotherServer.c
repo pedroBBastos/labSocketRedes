@@ -161,6 +161,17 @@ int initiateServer(char *port) {
     return listenfd;
 }
 
+
+void sendListOfCommandsToClient(ClientInformation clientInfo) {
+    char   buf[MAXDATASIZE];
+    snprintf(buf, sizeof(buf), 
+		    "Hello! These are the commands available:\n \
+            --list-connected-clients\n \
+            --chat-with <client-id>\n \
+            --exit\n");
+    write(clientInfo.connfd, buf, strlen(buf));
+}
+
 /*****************************************************************************
  * method to send all clients available to new client                        *
  *****************************************************************************/
@@ -206,14 +217,28 @@ void handleNewConnection(ClientLinkedList* clientLinkedList, fd_set* allset,
     printf("Client IP Address: %s\n", clientInfo.client_ip);
     printf("Client local socket port: %d\n", clientInfo.client_socket_port);
 
-    sendClientsAvailableToNewClient(clientInfo, clientLinkedList);
+    // sendClientsAvailableToNewClient(clientInfo, clientLinkedList);
     addNewClientToClientList(clientInfo, clientLinkedList);
+    sendListOfCommandsToClient(clientInfo);
 
     
     FD_SET(connfd, allset); /* add new descriptor to set */
     if (connfd > *maxfd) {
         *maxfd = connfd; /* for select */
     }
+}
+
+/*****************************************************************************
+ * method to handle client message                                           *
+ *****************************************************************************/
+
+void handleClientMessage(ClientInformation clientInformation,
+                         char message[MAXLINE]) {
+    int clientIdToChat = atoi(message);
+    printf("client id chosen -> %d\n", clientIdToChat);
+
+    // tirar da lista o cliente atual e o indicado por este da lista
+    // enviar para ambos mensagem de que podem se falar???
 }
 
 /*****************************************************************************
@@ -240,7 +265,8 @@ void checkAllClientsForData(ClientLinkedList* clientLinkedList, fd_set* rset,
                 continue;
             } else {
                 printf("recebido do cliente %s\n", buf);
-                write(sockfd, buf, n);  // envia de volta para o cliente sua mensagem...
+                // write(sockfd, buf, n);  // envia de volta para o cliente sua mensagem...
+                handleClientMessage(currentNode->clientInformation, buf);
             }
         }
 
