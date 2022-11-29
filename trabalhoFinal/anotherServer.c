@@ -162,6 +162,31 @@ int initiateServer(char *port) {
 }
 
 /*****************************************************************************
+ * method to send all clients available to new client                        *
+ *****************************************************************************/
+
+void sendClientsAvailableToNewClient(ClientInformation clientInfo,
+                                     ClientLinkedList* clientLinkedList) {
+    char message[MAXLINE + 1];
+    ClientNode* currentNode = clientLinkedList->head;
+
+    strcpy(message,"Clients available to chat: \n");
+
+    while(currentNode != NULL) {
+        char clientIdString[5];
+        snprintf(clientIdString, 5, "%d", currentNode->clientInformation.clientID);
+        strcat(message, clientIdString);
+        if (currentNode->nextNode != NULL)
+            strcat(message, ", ");
+        currentNode = currentNode->nextNode;
+    }
+
+    strcat(message, "\n");
+    printf("%s\n", message);
+    write(clientInfo.connfd, message, MAXLINE + 1);
+}
+
+/*****************************************************************************
  * method to handle new connection                                           *
  *****************************************************************************/
 
@@ -181,6 +206,7 @@ void handleNewConnection(ClientLinkedList* clientLinkedList, fd_set* allset,
     printf("Client IP Address: %s\n", clientInfo.client_ip);
     printf("Client local socket port: %d\n", clientInfo.client_socket_port);
 
+    sendClientsAvailableToNewClient(clientInfo, clientLinkedList);
     addNewClientToClientList(clientInfo, clientLinkedList);
 
     

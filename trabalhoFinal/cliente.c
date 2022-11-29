@@ -24,30 +24,6 @@ void checkProgramInput(int argc, char **argv) {
     }
 }
 
-void printLocalSocketInfo(int socket_file_descriptor) {
-    char local_socket_ip[16];
-    // unsigned int local_socket_port;
-    struct sockaddr_in local_addr;
-
-    bzero(&local_addr, sizeof(local_addr));
-    socklen_t len = sizeof(local_addr);
-    
-    //obtendo informações do socket local.
-    //sock_file_descriptor foi criado previamente para se comunicar com o servidor
-    getsockname(socket_file_descriptor, (struct sockaddr *) &local_addr, &len);
-
-    // função inet_ntop -> para converter de endereço binário para formato texto
-    inet_ntop(AF_INET, &local_addr.sin_addr, local_socket_ip, sizeof(local_socket_ip));
-
-    // função ntohs -> conversão endereço de rede para host
-    // local_socket_port = ntohs(local_addr.sin_port);
-
-    // printf("Local socket IP Address: %s\n", local_socket_ip);
-    // printf("Local socket port: %u\n", local_socket_port);
-
-    // sleep(20);
-}
-
 int conectToServer(char *address, char *port) {
     int socket_file_descriptor;
     struct sockaddr_in servaddr;
@@ -69,92 +45,7 @@ int conectToServer(char *address, char *port) {
         exit(1);
     }
 
-    // printf("Server IP Address: %s\n", address);
-    // printf("Server port: %s\n", port);
-    // printLocalSocketInfo(socket_file_descriptor);
-
     return socket_file_descriptor;
-}
-
-void handleCommandExecution(int socket_file_descriptor, char outputPart[MAXLINE]) {
-    // // printf("%s", outputPart);
-    //Envia mensagem para o servidor
-    if(send(socket_file_descriptor, outputPart, 500, 0) < 0) {
-        puts("Send failed");
-        exit(1);
-    }
-}
-
-void executeReceivedCommand(int socket_file_descriptor, char command[MAXLINE + 1]) {
-    FILE *fp;
-    int status;
-    char path[MAXLINE];
-
-    fp = popen(command, "r");
-    if (fp == NULL) {
-        // printf("Error while trying to execute command!!\n");
-    }
-
-    while (fgets(path, MAXLINE, fp) != NULL) {
-        handleCommandExecution(socket_file_descriptor, path);
-    }
-    //Envia mensagem para o servidor
-    if(send(socket_file_descriptor, "end-command-execution", 500, 0) < 0) {
-        puts("Send failed");
-        exit(1);
-    }
-
-    status = pclose(fp);
-    if (status == -1) {
-        // printf("Error while trying to close popen oppened stream!!\n");
-    }
-}
-
-char *modifyString(char *str) {
-    if (!str || ! *str)
-        return str;
-    int i = strlen(str) - 1;
-    int j = 0;
-    char ch;
-    while (i > j){
-        ch = str[i];
-        str[i] = toupper(str[j]);
-        str[j] = toupper(ch);
-        i--;
-        j++;
-    }
-    return str;
-}
-
-void printModifiedCommand(char command[MAXLINE + 1]) {
-    char copyString[MAXLINE + 1];
-    strcpy(copyString, command);
-    strcpy(copyString, modifyString(copyString));
-    strcat(copyString, "\n");
-    // printf(copyString);
-}
-
-void readCommandsFromServer(int socket_file_descriptor) {
-    int n;
-    char recvline[MAXLINE + 1];
-
-    for ( ; ; ) {
-        bzero(&recvline, sizeof(recvline));
-        if( (n = read(socket_file_descriptor, recvline, MAXLINE)) > 0) {
-            // // printf("Command received from server: %s\n", recvline);
-            printModifiedCommand(recvline);
-
-            if(strcmp(recvline, "exit") == 0) {
-                // printf("Finishing interaction with server\n");
-                break;
-            } else {
-                executeReceivedCommand(socket_file_descriptor, recvline);
-            }
-        } else {
-            perror("read error");
-            exit(1);
-        }
-    }
 }
 
 void interactWithServer(int socket_file_descriptor) {
@@ -179,15 +70,23 @@ void interactWithServer(int socket_file_descriptor) {
     }
 }
 
+void readAvailableClientsToConnect(int socket_file_descriptor) {
+    char recvline[MAXLINE + 1];
+
+    read(socket_file_descriptor, recvline, MAXLINE);
+    printf(recvline);
+
+    interactWithServer(socket_file_descriptor);
+}
+
 int main(int argc, char **argv) {
     int socket_file_descriptor;
 
     checkProgramInput(argc, argv);
     socket_file_descriptor = conectToServer(argv[1], argv[2]);
 
-    // readCommandsFromServer(socket_file_descriptor);
-    // sleep(30);
-    interactWithServer(socket_file_descriptor);
+    readAvailableClientsToConnect(socket_file_descriptor);
+    // interactWithServer(socket_file_descriptor);
     
     exit(0);
 }
