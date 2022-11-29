@@ -186,7 +186,7 @@ int main(int argc, char **argv) {
     conectToServer(argv[1], argv[2]);
 
     // readCommandsFromServer(socket_file_descriptor);
-    sleep(30);
+    // sleep(30);
     
     exit(0);
 }

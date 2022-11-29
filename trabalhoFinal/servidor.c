@@ -20,23 +20,29 @@
 
 int referenceIDForCLients = 0;
 
+/***************************************************************/
+
 typedef struct {
     int clientID;
     char client_ip[16];
     unsigned int client_socket_port;
 } ClientInformation;
 
+typedef struct ClientNode_struct {
+    ClientInformation clientInformation;
+    struct ClientNode_struct* nextNode;
+} ClientNode;
+
 typedef struct {
-    int size;
-    ClientInformation connectedClients[100];
-    // TODO: Pensar uma forma aqui de remover os clientes quando se conectam entre si ou quando
-    // se desconectam do servidor...
-} ClientsPool;
+    ClientNode* head;
+    ClientNode* tail;
+} ClientLinkedList;
+
+/***************************************************************/
 
 void sig_chld(int signo) {
     pid_t pid;
     int stat;
-    printf("Called sig_chld \n");
     while ( (pid = waitpid(-1, &stat, WNOHANG)) > 0)
         printf("child %d terminated\n", pid);
     return;
@@ -94,6 +100,52 @@ ClientInformation getClientInformation(int connfd, struct sockaddr_in peeraddr) 
     return clientInfo;
 }
 
+void addNewClientToClientList(ClientInformation clientInfo,
+                              ClientLinkedList* clientLinkedList) {
+    ClientNode* newClientNode = (ClientNode*)malloc(sizeof(ClientNode));
+    newClientNode->clientInformation = clientInfo;
+    newClientNode->nextNode = NULL;
+
+    if (clientLinkedList->head == NULL) {
+        clientLinkedList->head = newClientNode;
+        clientLinkedList->tail = newClientNode;
+    } else {
+        clientLinkedList->tail->nextNode = newClientNode;
+        clientLinkedList->tail = newClientNode;
+    }
+}
+
+void removeClientFromClientList(ClientInformation clientInfo,
+                                ClientLinkedList* clientLinkedList) {
+    ClientNode* previousNode = NULL;
+    ClientNode* currentNode = clientLinkedList->head;
+    while(currentNode != NULL) {
+        printf("currentNode->clientInformation.clientID -> %d\n", currentNode->clientInformation.clientID);
+        if (currentNode->clientInformation.clientID == clientInfo.clientID) {
+            printf("Removing item\n");
+            if (previousNode != NULL) {
+                previousNode->nextNode = currentNode->nextNode;
+            } else {
+                clientLinkedList->head = currentNode->nextNode;
+            }
+            free(currentNode);
+            break;
+        }
+        previousNode = currentNode;
+        currentNode = currentNode->nextNode;
+    }
+}
+
+void printClientsList(ClientLinkedList* clientLinkedList) {
+    ClientNode* currentNode = clientLinkedList->head;
+    printf("----------------------------\n");
+    while(currentNode != NULL) {
+        printf("client id: %d\n", currentNode->clientInformation.clientID);
+        currentNode = currentNode->nextNode;
+    }
+    printf("----------------------------\n");
+}
+
 void readClientCommandExecutionResponse(int connfd,
                                         char currentCommand[40],
                                         ClientInformation clientInfo) {
@@ -125,23 +177,23 @@ void readClientCommandExecutionResponse(int connfd,
 }
 
 void handleClient(int connfd, ClientInformation clientInfo) {
-    int n;
+    // int n;
 
-    char commands[4][40];
-    strcpy(commands[0], "ls\0"); 
-    strcpy(commands[1], "pwd\0");
-    strcpy(commands[2], "ls -l\0");
-    strcpy(commands[3], "exit\0");
+    // char commands[4][40];
+    // strcpy(commands[0], "ls\0"); 
+    // strcpy(commands[1], "pwd\0");
+    // strcpy(commands[2], "ls -l\0");
+    // strcpy(commands[3], "exit\0");
 
-    for (int i=0; i < 4; i++) {
-        if ( (n = write(connfd, commands[i], strlen(commands[i]))) > 0 && 
-                strcmp(commands[i], "exit") != 0) {
-            // readClientCommandExecutionResponse(connfd, commands[i], clientInfo);
-        }
-    }
+    // for (int i=0; i < 4; i++) {
+    //     if ( (n = write(connfd, commands[i], strlen(commands[i]))) > 0 && 
+    //             strcmp(commands[i], "exit") != 0) {
+    //         // readClientCommandExecutionResponse(connfd, commands[i], clientInfo);
+    //     }
+    // }
 }
 
-void startListenToConnections(int listenfd) {
+void startListenToConnections(int listenfd, ClientLinkedList* clientLinkedList) {
     int connfd;
 
     __sighandler_t asd = signal(SIGCHLD, sig_chld); /* must call waitpid() */
@@ -164,13 +216,20 @@ void startListenToConnections(int listenfd) {
         printf("Client IP Address: %s\n", clientInfo.client_ip);
         printf("Client local socket port: %d\n", clientInfo.client_socket_port);
 
+        addNewClientToClientList(clientInfo, clientLinkedList);
+        // printClientsList(clientLinkedList);
+
         pid_t pid = fork();
         if (pid == 0){
             close(listenfd);
             // // printf("[test] Inside procces (pid): %d \n", pid);
             handleClient(connfd, clientInfo);
 
-            printf("Closing connection with client %d \n", connfd);
+            // printClientsList(clientLinkedList);
+            removeClientFromClientList(clientInfo, clientLinkedList);
+            // printClientsList(clientLinkedList);
+
+            printf("Closing connection with client %d \n", clientInfo.clientID);
             close(connfd);
             exit(0);
         }
@@ -182,12 +241,14 @@ void startListenToConnections(int listenfd) {
 int main (int argc, char **argv) {
     int listenfd;
 
-    ClientInformation connectedClients[100];
+    ClientLinkedList clientLinkedList;
+    clientLinkedList.head = NULL;
+    clientLinkedList.tail = NULL;
 
     checkProgramInput(argc, argv);
     listenfd = initiateServer(argv[1]);
 
-    startListenToConnections(listenfd);
+    startListenToConnections(listenfd, &clientLinkedList);
 
     return(0);
 }
