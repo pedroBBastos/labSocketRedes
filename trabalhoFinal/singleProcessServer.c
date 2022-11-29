@@ -64,7 +64,7 @@ int main (int argc, char **argv) {
     fd_set rset, allset;
     char buf[MAXLINE];
     socklen_t clilen;
-    struct sockaddr_in cliaddr, servaddr;
+    struct sockaddr_in cliaddr;
 
 
     checkProgramInput(argc, argv);
@@ -99,7 +99,8 @@ int main (int argc, char **argv) {
             }
 
             if (i == FD_SETSIZE) {
-                // err_quit("too many clients");
+                perror("too many clients");
+                exit(1);
             }
             FD_SET(connfd, &allset); /* add new descriptor to set */
             if (connfd > maxfd) {
