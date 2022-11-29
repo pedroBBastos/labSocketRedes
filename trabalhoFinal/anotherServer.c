@@ -20,7 +20,7 @@
 #define MAXLINE 4096
 
 /*****************************************************************************
- * Utilitary                                                                 *
+ * Util methods/structs                                                      *
  *****************************************************************************/
 
 int referenceIDForCLients = 0;
@@ -56,6 +56,12 @@ ClientInformation getClientInformation(int connfd, struct sockaddr_in peeraddr) 
     clientInfo.connfd = connfd; // saving descriptor
 
     return clientInfo;
+}
+
+void initiateClientLinkedList(ClientLinkedList* clientLinkedList) {
+    clientLinkedList->head = NULL;
+    clientLinkedList->tail = NULL;
+    clientLinkedList->size = 0;
 }
 
 void addNewClientToClientList(ClientInformation clientInfo,
@@ -156,87 +162,90 @@ int initiateServer(char *port) {
 }
 
 /*****************************************************************************
+ * method to handle new connection                                           *
+ *****************************************************************************/
+
+void handleNewConnection(ClientLinkedList* clientLinkedList, fd_set* allset,
+                         int* maxfd, int listenfd) {
+    printf("New connection!!! \n");
+
+    struct sockaddr_in cliaddr;
+    socklen_t clilen;
+
+    clilen = sizeof(cliaddr);
+    int connfd = accept(listenfd, (struct sockaddr *) &cliaddr, &clilen);
+
+    getpeername(connfd , (struct sockaddr*) &cliaddr , (socklen_t*) &clilen);
+    ClientInformation clientInfo = getClientInformation(connfd, cliaddr);
+
+    printf("Client IP Address: %s\n", clientInfo.client_ip);
+    printf("Client local socket port: %d\n", clientInfo.client_socket_port);
+
+    addNewClientToClientList(clientInfo, clientLinkedList);
+
+    
+    FD_SET(connfd, allset); /* add new descriptor to set */
+    if (connfd > *maxfd) {
+        *maxfd = connfd; /* for select */
+    }
+}
+
+/*****************************************************************************
+ * method to check all clients for data                                      *
+ *****************************************************************************/
+
+void checkAllClientsForData(ClientLinkedList* clientLinkedList, fd_set* rset,
+                            fd_set* allset) {
+    char buf[MAXLINE];
+
+    ClientNode* currentNode = clientLinkedList->head;
+    while(currentNode != NULL) {
+        int sockfd = currentNode->clientInformation.connfd;
+        if (FD_ISSET(sockfd, rset)) {
+            int n;
+            if ((n = read(sockfd, buf, MAXLINE)) == 0) { /* connection closed by client */
+                printf("Connection closed by client!!! \n");
+                close(sockfd);
+                FD_CLR(sockfd, allset);
+
+                ClientNode* nodeToErase = currentNode;
+                currentNode = currentNode->nextNode;
+                removeClientFromClientList(nodeToErase->clientInformation, clientLinkedList);
+                continue;
+            } else {
+                printf("recebido do cliente %s\n", buf);
+                write(sockfd, buf, n);  // envia de volta para o cliente sua mensagem...
+            }
+        }
+
+        currentNode = currentNode->nextNode;
+    }
+}
+
+/*****************************************************************************
  * main method                                                               *
  *****************************************************************************/
 
 int main (int argc, char **argv) {
-
-    // inicializando lista ligada de clientes
-    ClientLinkedList clientLinkedList;
-    clientLinkedList.head = NULL;
-    clientLinkedList.tail = NULL;
-    clientLinkedList.size = 0;
-
-    int maxfd, listenfd, connfd;
-    int nready;
-    ssize_t n;
-    fd_set rset, allset;
-    char buf[MAXLINE];
     
-
-
     checkProgramInput(argc, argv);
-    listenfd = initiateServer(argv[1]);
-    maxfd = listenfd;
-    
+
+    int listenfd = initiateServer(argv[1]);
+    int maxfd = listenfd;
+
+    fd_set rset, allset;
     FD_ZERO(&allset);
     FD_SET(listenfd, &allset);
 
+    ClientLinkedList clientLinkedList;
+    initiateClientLinkedList(&clientLinkedList);
 
     for ( ; ; ) {
         rset = allset; /* structure assignment */
-        nready = select(maxfd + 1, &rset, NULL, NULL, NULL);
-
+        select(maxfd + 1, &rset, NULL, NULL, NULL);
         if (FD_ISSET(listenfd, &rset)) { /* new client connection */
-            printf("New connection!!! \n");
-
-            struct sockaddr_in cliaddr;
-            socklen_t clilen;
-
-            clilen = sizeof(cliaddr);
-            connfd = accept(listenfd, (struct sockaddr *) &cliaddr, &clilen);
-
-            getpeername(connfd , (struct sockaddr*) &cliaddr , (socklen_t*) &clilen);
-	        ClientInformation clientInfo = getClientInformation(connfd, cliaddr);
-
-            printf("Client IP Address: %s\n", clientInfo.client_ip);
-            printf("Client local socket port: %d\n", clientInfo.client_socket_port);
-
-            addNewClientToClientList(clientInfo, &clientLinkedList);
-
-            
-            FD_SET(connfd, &allset); /* add new descriptor to set */
-            if (connfd > maxfd) {
-                maxfd = connfd; /* for select */
-            }
-
-            if (--nready <= 0) {
-                continue; /* no more readable descriptors */
-            }
+            handleNewConnection(&clientLinkedList, &allset, &maxfd, listenfd);
         }
-
-        ClientNode* currentNode = clientLinkedList.head;
-        while(currentNode != NULL) {
-            printf("client id: %d\n", currentNode->clientInformation.clientID);
-            int sockfd = currentNode->clientInformation.connfd;
-
-            if (FD_ISSET(sockfd, &rset)) {
-                if ((n = read(sockfd, buf, MAXLINE)) == 0) { /* connection closed by client */
-                    printf("Connection closed by client!!! \n");
-                    close(sockfd);
-                    FD_CLR(sockfd, &allset);
-
-                    ClientNode* nodeToErase = currentNode;
-                    currentNode = currentNode->nextNode;
-                    removeClientFromClientList(nodeToErase->clientInformation, &clientLinkedList);
-                    continue;
-                } else {
-                    printf("recebido do cliente %s\n", buf);
-                    write(sockfd, buf, n);  // envia de volta para o cliente sua mensagem...
-                }
-            }
-
-            currentNode = currentNode->nextNode;
-        }
+        checkAllClientsForData(&clientLinkedList, &rset, &allset);
     }
 }
