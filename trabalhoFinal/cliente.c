@@ -180,13 +180,14 @@ void interactWithServer(int socket_file_descriptor) {
 }
 
 int main(int argc, char **argv) {
-    // int socket_file_descriptor;
+    int socket_file_descriptor;
 
     checkProgramInput(argc, argv);
-    conectToServer(argv[1], argv[2]);
+    socket_file_descriptor = conectToServer(argv[1], argv[2]);
 
     // readCommandsFromServer(socket_file_descriptor);
     // sleep(30);
+    interactWithServer(socket_file_descriptor);
     
     exit(0);
 }
