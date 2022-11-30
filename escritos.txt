@@ -3,3 +3,10 @@ https://www.gta.ufrj.br/ensino/eel878/sockets/htonsman.html
 
 Elementary UDP Sockets -> pg. 296
 TCP Echo Server (using select function) -> pg. 230
+
+----------------------
+
+https://stackoverflow.com/questions/22367920/is-it-possible-that-linux-file-descriptor-0-1-2-not-for-stdin-stdout-and-stderr
+
+https://stackoverflow.com/questions/15102992/what-is-the-difference-between-stdin-and-stdin-fileno
+

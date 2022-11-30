@@ -79,6 +79,8 @@ void readAvailableClientsToConnect(int socket_file_descriptor) {
     interactWithServer(socket_file_descriptor);
 
     //aqui deverei usar tbem o select, para puder ouvir ao mesmo tempo o stdin, descriptor UDP, descriptor TCP (mensagens do servidor)
+
+    // usar STDIN_FILENO para verificar input do teclado...
 }
 
 int main(int argc, char **argv) {
