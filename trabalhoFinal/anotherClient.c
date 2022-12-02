@@ -24,6 +24,10 @@ void checkProgramInput(int argc, char **argv) {
     }
 }
 
+int max(int a, int b) {
+    return a > b ? a : b;
+}
+
 int conectToServer(char *address, char *port) {
     int socket_file_descriptor;
     struct sockaddr_in servaddr;
@@ -48,49 +52,50 @@ int conectToServer(char *address, char *port) {
     return socket_file_descriptor;
 }
 
-void interactWithServer(int socket_file_descriptor) {
+void sendMessageToServer(int socket_file_descriptor) {
     char text_to_server[500];
-    for ( ; ; ) {
-        bzero(&text_to_server, sizeof(text_to_server));
-        // printf("Type your command: \n");
+    bzero(&text_to_server, sizeof(text_to_server));
 
-        fgets(text_to_server, 500, stdin);
-        text_to_server[strcspn(text_to_server, "\n")] = 0;
+    fgets(text_to_server, 500, stdin);
+    text_to_server[strcspn(text_to_server, "\n")] = 0;
 
-        //Envia mensagem para o servidor
-        if(send(socket_file_descriptor, text_to_server, 500, 0) < 0) {
-            puts("Send failed");
-            exit(1);
-        }
-
-        if(strcmp(text_to_server, "exit") == 0) {
-            // printf("Finishing interaction with server\n");
-            break;
-        }
+    //Envia mensagem para o servidor
+    if(send(socket_file_descriptor, text_to_server, 500, 0) < 0) {
+        puts("Send failed");
+        exit(1);
     }
 }
 
-void readAvailableClientsToConnect(int socket_file_descriptor) {
+void readMessageFromServer(int socket_file_descriptor) {
     char recvline[MAXLINE + 1];
 
     read(socket_file_descriptor, recvline, MAXLINE);
     printf("%s", recvline);
-
-    interactWithServer(socket_file_descriptor);
-
-    //aqui deverei usar tbem o select, para puder ouvir ao mesmo tempo o stdin, descriptor UDP, descriptor TCP (mensagens do servidor)
-
-    // usar STDIN_FILENO para verificar input do teclado...
 }
 
 int main(int argc, char **argv) {
-    int socket_file_descriptor;
+    int socket_file_descriptor, maxfdp;
 
     checkProgramInput(argc, argv);
     socket_file_descriptor = conectToServer(argv[1], argv[2]);
 
-    readAvailableClientsToConnect(socket_file_descriptor);
-    // interactWithServer(socket_file_descriptor);
+    fd_set rset;
+    FD_ZERO(&rset);
+
+    for ( ; ; ) {
+        FD_SET(socket_file_descriptor, &rset);
+        FD_SET(STDIN_FILENO, &rset);
+        maxfdp = max(STDIN_FILENO, socket_file_descriptor) + 1;
+        select(maxfdp, &rset, NULL, NULL, NULL);
+
+        if (FD_ISSET(socket_file_descriptor, &rset)) {
+            readMessageFromServer(socket_file_descriptor);
+        }
+
+        if (FD_ISSET(STDIN_FILENO, &rset)) {
+            sendMessageToServer(socket_file_descriptor);
+        }
+    }
     
     exit(0);
 }

@@ -9,3 +9,5 @@ echo "------- singleProcessServer.c -------"
 gcc -Wall singleProcessServer.c -o singleProcessServer
 echo "------- anotherServer.c -------"
 gcc -Wall anotherServer.c -o anotherServer
+echo "------- anotherClient.c -------"
+gcc -Wall anotherClient.c -o anotherClient

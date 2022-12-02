@@ -82,6 +82,8 @@ void addNewClientToClientList(ClientInformation clientInfo,
         clientLinkedList->tail->nextNode = newClientNode;
         clientLinkedList->tail = newClientNode;
     }
+
+    clientLinkedList->size++;
 }
 
 void removeClientFromClientList(ClientInformation clientInfo,
@@ -217,7 +219,6 @@ void handleNewConnection(ClientLinkedList* clientLinkedList, fd_set* allset,
     printf("Client IP Address: %s\n", clientInfo.client_ip);
     printf("Client local socket port: %d\n", clientInfo.client_socket_port);
 
-    // sendClientsAvailableToNewClient(clientInfo, clientLinkedList);
     addNewClientToClientList(clientInfo, clientLinkedList);
     sendListOfCommandsToClient(clientInfo);
 

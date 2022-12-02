@@ -1,6 +1,7 @@
 cliente
 servidor
 anotherServer
+anotherClient
 singleProcessServer
 .vscode/
 clients-connection-log
