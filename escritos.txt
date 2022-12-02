@@ -10,3 +10,8 @@ https://stackoverflow.com/questions/22367920/is-it-possible-that-linux-file-desc
 
 https://stackoverflow.com/questions/15102992/what-is-the-difference-between-stdin-and-stdin-fileno
 
+----------------------
+
+TODO:
+    - extrair para um método o envio de uma mensagem do servidor para um cliente específico
+    - extrair para um método o tratamento de desconexão de um cliente..

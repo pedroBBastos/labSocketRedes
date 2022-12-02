@@ -183,7 +183,7 @@ void sendClientsAvailableToNewClient(ClientInformation clientInfo,
     char message[MAXLINE + 1];
     ClientNode* currentNode = clientLinkedList->head;
 
-    strcpy(message,"Clients available to chat: \n");
+    strcpy(message,"[server] Clients available to chat: \n");
 
     while(currentNode != NULL) {
         char clientIdString[5];
@@ -259,12 +259,16 @@ void handleNewConnection(ClientLinkedList* clientLinkedList, fd_set* allset,
  *****************************************************************************/
 
 void handleClientMessage(ClientInformation clientInformation,
-                         char message[MAXLINE]) {
-    int clientIdToChat = atoi(message);
-    printf("client id chosen -> %d\n", clientIdToChat);
-
-    // tirar da lista o cliente atual e o indicado por este da lista
-    // enviar para ambos mensagem de que podem se falar???
+                         char message[MAXLINE], ClientLinkedList* clientLinkedList) {
+    if (strcmp(message, "--list-connected-clients") == 0) {
+        sendClientsAvailableToNewClient(clientInformation, clientLinkedList);
+    } else if (strncmp(message, "--chat-with", 11) == 0) {
+        printf("To start chat with another client...\n");
+    } else if (strcmp(message, "--exit") == 0) {
+        printf("To disconnect client from server...\n");
+    } else {
+        printf("Unknow command sent...\n");
+    }
 }
 
 /*****************************************************************************
@@ -290,8 +294,9 @@ void checkAllClientsForData(ClientLinkedList* clientLinkedList, fd_set* rset,
                 removeClientFromClientList(nodeToErase->clientInformation, clientLinkedList);
                 continue;
             } else {
-                printf("recebido do cliente %s\n", buf);
-                handleClientMessage(currentNode->clientInformation, buf);
+                // printf("recebido do cliente %s\n", buf);
+                handleClientMessage(currentNode->clientInformation, buf,
+                                    clientLinkedList);
             }
         }
 
