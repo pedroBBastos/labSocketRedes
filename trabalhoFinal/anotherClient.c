@@ -82,7 +82,7 @@ void readMessageFromServer(int socket_file_descriptor) {
     char recvline[MAXLINE + 1];
     bzero(&recvline, sizeof(recvline));
 
-    if (read(socket_file_descriptor, recvline, MAXLINE) == 0) {
+    if (read(socket_file_descriptor, recvline, MAXLINE + 1) == 0) {
         perror("Server terminated prematurely!!");
         exit(1);
     } else {
