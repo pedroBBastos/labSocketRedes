@@ -167,7 +167,7 @@ int initiateServer(char *port) {
 void sendListOfCommandsToClient(ClientInformation clientInfo) {
     char   buf[MAXDATASIZE];
     snprintf(buf, sizeof(buf), 
-		    "Hello! These are the commands available:\n \
+		    "[server] Hello! These are the commands available:\n \
             --list-connected-clients\n \
             --chat-with <client-id>\n \
             --exit\n");
@@ -200,6 +200,29 @@ void sendClientsAvailableToNewClient(ClientInformation clientInfo,
 }
 
 /*****************************************************************************
+ * method to notify all clients connected so far the connection of a new client
+ *****************************************************************************/
+
+void notifyAllClientsNewClient(ClientInformation clientInfo,
+                               ClientLinkedList* clientLinkedList) {
+    char message[MAXLINE + 1];
+
+    strcpy(message,"[server] New client connected! id: ");
+    char clientIdString[sizeof(clientInfo.clientID)];
+    snprintf(clientIdString, sizeof(clientInfo.clientID), "%d", clientInfo.clientID);
+    strcat(message, clientIdString);
+    strcat(message, "\n");
+
+    printf("message -> %s\n", message);
+
+    ClientNode* currentNode = clientLinkedList->head;
+    while(currentNode != NULL) {
+        write(currentNode->clientInformation.connfd, message, MAXLINE + 1);
+        currentNode = currentNode->nextNode;
+    }
+}
+
+/*****************************************************************************
  * method to handle new connection                                           *
  *****************************************************************************/
 
@@ -218,6 +241,8 @@ void handleNewConnection(ClientLinkedList* clientLinkedList, fd_set* allset,
 
     printf("Client IP Address: %s\n", clientInfo.client_ip);
     printf("Client local socket port: %d\n", clientInfo.client_socket_port);
+
+    notifyAllClientsNewClient(clientInfo, clientLinkedList);
 
     addNewClientToClientList(clientInfo, clientLinkedList);
     sendListOfCommandsToClient(clientInfo);
@@ -266,7 +291,6 @@ void checkAllClientsForData(ClientLinkedList* clientLinkedList, fd_set* rset,
                 continue;
             } else {
                 printf("recebido do cliente %s\n", buf);
-                // write(sockfd, buf, n);  // envia de volta para o cliente sua mensagem...
                 handleClientMessage(currentNode->clientInformation, buf);
             }
         }

@@ -28,6 +28,10 @@ int max(int a, int b) {
     return a > b ? a : b;
 }
 
+/*****************************************************************************
+ * method to connect to server                                               *
+ *****************************************************************************/
+
 int conectToServer(char *address, char *port) {
     int socket_file_descriptor;
     struct sockaddr_in servaddr;
@@ -52,6 +56,10 @@ int conectToServer(char *address, char *port) {
     return socket_file_descriptor;
 }
 
+/*****************************************************************************
+ * method to send message to server                                          *
+ *****************************************************************************/
+
 void sendMessageToServer(int socket_file_descriptor) {
     char text_to_server[500];
     bzero(&text_to_server, sizeof(text_to_server));
@@ -66,12 +74,25 @@ void sendMessageToServer(int socket_file_descriptor) {
     }
 }
 
+/*****************************************************************************
+ * method to read message from server                                        *
+ *****************************************************************************/
+
 void readMessageFromServer(int socket_file_descriptor) {
     char recvline[MAXLINE + 1];
+    bzero(&recvline, sizeof(recvline));
 
-    read(socket_file_descriptor, recvline, MAXLINE);
-    printf("%s", recvline);
+    if (read(socket_file_descriptor, recvline, MAXLINE) == 0) {
+        perror("Server terminated prematurely!!");
+        exit(1);
+    } else {
+        printf("%s", recvline);
+    }
 }
+
+/*****************************************************************************
+ * main method                                                               *
+ *****************************************************************************/
 
 int main(int argc, char **argv) {
     int socket_file_descriptor, maxfdp;
