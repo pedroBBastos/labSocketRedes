@@ -276,6 +276,15 @@ void handleClientMessage(ClientInformation* clientInformation,
         sendClientsAvailableToNewClient(*clientInformation, clientLinkedList);
     } else if (strncmp(message, "--chat-with", 11) == 0) {
         printf("To start chat with another client...\n");
+
+        char substring[6];
+        memcpy(substring, &message[12], 6);
+        substring[6] = '\0';
+        int clientIdToChatWith = strtol(substring, 0L, 10);
+
+        printf("clientIdToChatWith -> %d\n", clientIdToChatWith);
+
+
     } else if (strcmp(message, "--exit") == 0) {
         printf("To disconnect client from server...\n");
     } else if (strncmp(message, "my_udp_port_is", 14) == 0) {
