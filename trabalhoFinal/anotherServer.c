@@ -30,6 +30,7 @@ typedef struct {
     int connfd;
     char client_ip[16];
     unsigned int client_socket_port;
+    unsigned int client_udp_port;
 } ClientInformation;
 
 typedef struct ClientNode_struct {
@@ -54,6 +55,7 @@ ClientInformation getClientInformation(int connfd, struct sockaddr_in peeraddr) 
     clientInfo.client_socket_port = local_socket_port;
     clientInfo.clientID = referenceIDForCLients++;
     clientInfo.connfd = connfd; // saving descriptor
+    clientInfo.client_udp_port = -1;
 
     return clientInfo;
 }
@@ -163,6 +165,15 @@ int initiateServer(char *port) {
     return listenfd;
 }
 
+void requestClientsUDPPort(ClientInformation clientInfo) {
+    char   buf[MAXDATASIZE];
+    strcpy(buf, "give_me_your_udp_port");
+    write(clientInfo.connfd, buf, strlen(buf));
+}
+
+/*****************************************************************************
+ * method to send list of commands to a given client                         *
+ *****************************************************************************/
 
 void sendListOfCommandsToClient(ClientInformation clientInfo) {
     char   buf[MAXDATASIZE];
@@ -245,6 +256,7 @@ void handleNewConnection(ClientLinkedList* clientLinkedList, fd_set* allset,
     notifyAllClientsNewClient(clientInfo, clientLinkedList);
 
     addNewClientToClientList(clientInfo, clientLinkedList);
+    requestClientsUDPPort(clientInfo);
     sendListOfCommandsToClient(clientInfo);
 
     
@@ -258,16 +270,23 @@ void handleNewConnection(ClientLinkedList* clientLinkedList, fd_set* allset,
  * method to handle client message                                           *
  *****************************************************************************/
 
-void handleClientMessage(ClientInformation clientInformation,
+void handleClientMessage(ClientInformation* clientInformation,
                          char message[MAXLINE], ClientLinkedList* clientLinkedList) {
     if (strcmp(message, "--list-connected-clients") == 0) {
-        sendClientsAvailableToNewClient(clientInformation, clientLinkedList);
+        sendClientsAvailableToNewClient(*clientInformation, clientLinkedList);
     } else if (strncmp(message, "--chat-with", 11) == 0) {
         printf("To start chat with another client...\n");
     } else if (strcmp(message, "--exit") == 0) {
         printf("To disconnect client from server...\n");
+    } else if (strncmp(message, "my_udp_port_is", 14) == 0) {
+        printf("To set clients udp port....\n");
+        char substring[6];
+        memcpy(substring, &message[15], 5);
+        substring[6] = '\0';
+        clientInformation->client_udp_port = strtoul(substring, 0L, 10);
     } else {
-        printf("Unknow command sent...\n");
+        printf("Unknow command sent:\n");
+        printf("    %s\n", message);
     }
 }
 
@@ -295,7 +314,7 @@ void checkAllClientsForData(ClientLinkedList* clientLinkedList, fd_set* rset,
                 continue;
             } else {
                 // printf("recebido do cliente %s\n", buf);
-                handleClientMessage(currentNode->clientInformation, buf,
+                handleClientMessage(&currentNode->clientInformation, buf,
                                     clientLinkedList);
             }
         }

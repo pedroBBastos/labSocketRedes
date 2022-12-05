@@ -28,6 +28,37 @@ int max(int a, int b) {
     return a > b ? a : b;
 }
 
+int initiateUDPSocket(struct sockaddr_in* udpaddr) {
+    int udpSockFileDescriptor;
+
+    if ((udpSockFileDescriptor = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
+        perror("udp socket");
+        exit(1);
+    }
+
+    bzero(udpaddr, sizeof(*udpaddr));
+    udpaddr->sin_family = AF_INET;
+    udpaddr->sin_addr.s_addr = htonl(INADDR_ANY);
+    udpaddr->sin_port = htons(0);
+
+    if (bind(udpSockFileDescriptor, (struct sockaddr *)udpaddr, sizeof(*udpaddr)) == -1) {
+        perror("udp bind");
+        exit(1);
+    }
+
+    return udpSockFileDescriptor;
+}
+
+unsigned int retrieveCurrentUDPPort(int udpSockFileDescriptor) {
+    struct sockaddr_in local_addr;
+
+    bzero(&local_addr, sizeof(local_addr));
+    socklen_t len = sizeof(local_addr);
+
+    getsockname(udpSockFileDescriptor, (struct sockaddr*) &local_addr, &len);
+    return ntohs(local_addr.sin_port);
+}
+
 /*****************************************************************************
  * method to connect to server                                               *
  *****************************************************************************/
@@ -78,7 +109,7 @@ void sendMessageToServer(int socket_file_descriptor) {
  * method to read message from server                                        *
  *****************************************************************************/
 
-void readMessageFromServer(int socket_file_descriptor) {
+void readMessageFromServer(int socket_file_descriptor, unsigned int udpPort) {
     char recvline[MAXLINE + 1];
     bzero(&recvline, sizeof(recvline));
 
@@ -86,7 +117,17 @@ void readMessageFromServer(int socket_file_descriptor) {
         perror("Server terminated prematurely!!");
         exit(1);
     } else {
-        printf("%s", recvline);
+        if (strncmp(recvline, "give_me_your_udp_port", 21) == 0) {
+            char   buf[MAXLINE + 1];
+            strcpy(buf, "my_udp_port_is ");
+            char myUdpPortString[sizeof(unsigned int)*8+1];
+            snprintf(myUdpPortString, sizeof(unsigned int)*8+1, "%u", udpPort);
+            strcat(buf, myUdpPortString);
+
+            write(socket_file_descriptor, buf, strlen(buf));
+        } else {
+            printf("%s", recvline);
+        }
     }
 }
 
@@ -96,9 +137,15 @@ void readMessageFromServer(int socket_file_descriptor) {
 
 int main(int argc, char **argv) {
     int socket_file_descriptor, maxfdp;
+    struct sockaddr_in udpaddr;
+    int udpSockFileDescriptor;
+    unsigned int currentUdpPort;
 
     checkProgramInput(argc, argv);
+
     socket_file_descriptor = conectToServer(argv[1], argv[2]);
+    udpSockFileDescriptor = initiateUDPSocket(&udpaddr);
+    currentUdpPort = retrieveCurrentUDPPort(udpSockFileDescriptor);
 
     fd_set rset;
     FD_ZERO(&rset);
@@ -110,7 +157,7 @@ int main(int argc, char **argv) {
         select(maxfdp, &rset, NULL, NULL, NULL);
 
         if (FD_ISSET(socket_file_descriptor, &rset)) {
-            readMessageFromServer(socket_file_descriptor);
+            readMessageFromServer(socket_file_descriptor, currentUdpPort);
         }
 
         if (FD_ISSET(STDIN_FILENO, &rset)) {

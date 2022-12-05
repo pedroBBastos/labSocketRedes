@@ -1,0 +1,18 @@
+Relatorio redes
+
+	- um dos primeiros problemas foi a tentativa de fazer um processo filho alterar a estrutura de dados contida no pai.
+	Como criamos um processo filho, este recebe uma cópia de todos os dados do pai. Assim, se o filho alterar determinada estrutura de dados, estará
+	apenas alterando sua própria cópia da estrutura, não alterando a do pai.
+	
+	- este problema foi resolvido usando a função select no servidor para tratador diversos file descriptors referentes a cada cliente que se conectava
+	ao servidor. Com o select, foi possível construir um servidor single process que pudesse ser um servidor concorrente (aceitar vários clientes de um vez)
+	
+	- com relação ao cliente, o método select também foi muito importante pelo fato deste permitir, no início da implementação, o file_descriptor do socket
+	de comunicação com o servidor e o STDIN_FILENO, o fd do standard input. Assim, foi possível receber mensagens do servidor e enviar mensagens do stdin
+	ao mesmo tempo..
+	
+	- com relação a comunicação entre dois clientes, estou pensando em fazer com que os dois clientes que estejam se conversando, cada um tenha um socket
+	criado por si próprio, ao invés de eu ter que determinar um cliente como o "servidor UDP" e outro como o "cliente UDP". Já que UDP é apenas mandar um
+	datagrama em uma porta destino... Daí terei que bolar a dança entre os dois pelo servidor para que cada um saiba o IP/Porta do seu chat peer...
+	- outra coisa que podemos fazer tbem é já todo cliente já iniciar por default um socket UDP...
+	- terei que usar a função getsockname para eu saber qual foi a porta UDP que o SO me deu para eu passar para o servidor...
