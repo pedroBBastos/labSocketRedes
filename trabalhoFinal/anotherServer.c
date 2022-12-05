@@ -273,6 +273,36 @@ void handleNewConnection(ClientLinkedList* clientLinkedList, fd_set* allset,
 }
 
 /*****************************************************************************
+ * method to update client UDP port, which is the first thing to be done after 
+ * a new client connect to the server                                        *
+ *****************************************************************************/
+
+void updateClientUDPPort(ClientInformation* clientInformation,
+                         char message[MAXLINE]) {
+    printf("To set client udp port....\n");
+    char substring[6];
+    memcpy(substring, &message[15], 5);
+    substring[6] = '\0';
+    clientInformation->client_udp_port = strtoul(substring, 0L, 10);
+}
+
+/*****************************************************************************
+ * method to initiate chat between clients                                   *
+ *****************************************************************************/
+
+void initiateChatBetweenClients(ClientInformation* clientInformation,
+                                char message[MAXLINE]) {
+    printf("Initiating chat between clients...");
+
+    char substring[6];
+    memcpy(substring, &message[12], 6);
+    substring[6] = '\0';
+    int clientIdToChatWith = strtol(substring, 0L, 10);
+
+    printf("clientIdToChatWith -> %d\n", clientIdToChatWith);
+}
+
+/*****************************************************************************
  * method to handle client message                                           *
  *****************************************************************************/
 
@@ -283,25 +313,11 @@ void handleClientMessage(ClientInformation* clientInformation,
     if (strcmp(message, "--list-connected-clients") == 0) {
         sendClientsAvailableToNewClient(*clientInformation, clientLinkedList);
     } else if (strncmp(message, "--chat-with", 11) == 0) {
-        printf("To start chat with another client...\n");
-
-        char substring[6];
-        memcpy(substring, &message[12], 6);
-        substring[6] = '\0';
-        int clientIdToChatWith = strtol(substring, 0L, 10);
-
-        printf("clientIdToChatWith -> %d\n", clientIdToChatWith);
-
-
+        initiateChatBetweenClients(clientInformation, message);
     } else if (strcmp(message, "--exit") == 0) {
         printf("To disconnect client from server...\n");
     } else if (strncmp(message, "my_udp_port_is", 14) == 0) {
-        printf("To set clients udp port....\n");
-        char substring[6];
-        memcpy(substring, &message[15], 5);
-        substring[6] = '\0';
-        clientInformation->client_udp_port = strtoul(substring, 0L, 10);
-
+        updateClientUDPPort(clientInformation, message);
         sendListOfCommandsToClient(*clientInformation);
     } else {
         printf("Unknow command sent:\n");
@@ -330,12 +346,9 @@ void checkAllClientsForData(ClientLinkedList* clientLinkedList, fd_set* rset,
 
                 ClientNode* nodeToErase = currentNode;
                 currentNode = currentNode->nextNode;
-                // ClientNode* nextNode = currentNode->nextNode;
                 removeClientFromClientList(nodeToErase->clientInformation, clientLinkedList);
-                // currentNode = nextNode;
                 continue;
             } else {
-                // printf("recebido do cliente %s\n", buf);
                 handleClientMessage(&currentNode->clientInformation, buf,
                                     clientLinkedList);
             }
@@ -369,8 +382,6 @@ int main (int argc, char **argv) {
         if (FD_ISSET(listenfd, &rset)) { /* new client connection */
             handleNewConnection(&clientLinkedList, &allset, &maxfd, listenfd);
         }
-        // sleep(5);
-        // printClientsList(&clientLinkedList);
         checkAllClientsForData(&clientLinkedList, &rset, &allset);
     }
 }
