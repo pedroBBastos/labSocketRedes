@@ -120,7 +120,7 @@ void getChatPeerInfo(char recvline[MAXLINE + 1], ChatObject* chatObject) {
 
 }
 
-void sendMessageToAnotherClient(int socket_file_descriptor) {
+void sendMessageToAnotherClient(ChatObject* chatObject) {
     printf("To send message to another client\n");
 
     char text_to_peer[500];
@@ -228,7 +228,7 @@ int main(int argc, char **argv) {
             if (!chatObject.inChatWithAnotherClient) {
                 sendMessageToServer(socket_file_descriptor);
             } else {
-                sendMessageToAnotherClient(3232);
+                sendMessageToAnotherClient(&chatObject);
             }
         }
     }
