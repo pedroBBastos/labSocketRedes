@@ -31,6 +31,7 @@ typedef struct {
     char client_ip[16];
     unsigned int client_socket_port;
     unsigned int client_udp_port;
+    int on_chat;
 } ClientInformation;
 
 typedef struct ClientNode_struct {
@@ -56,6 +57,7 @@ ClientInformation getClientInformation(int connfd, struct sockaddr_in peeraddr) 
     clientInfo.clientID = referenceIDForCLients++;
     clientInfo.connfd = connfd; // saving descriptor
     clientInfo.client_udp_port = -1;
+    clientInfo.on_chat = 0;
 
     return clientInfo;
 }
@@ -88,12 +90,12 @@ void addNewClientToClientList(ClientInformation clientInfo,
     clientLinkedList->size++;
 }
 
-void removeClientFromClientList(ClientInformation clientInfo,
-                                ClientLinkedList* clientLinkedList) {
+void removeClientFromClientListByClientID(int id,
+                                          ClientLinkedList* clientLinkedList) {
     ClientNode* previousNode = NULL;
     ClientNode* currentNode = clientLinkedList->head;
     while(currentNode != NULL) {
-        if (currentNode->clientInformation.clientID == clientInfo.clientID) {
+        if (currentNode->clientInformation.clientID == id) {
             printf("Removing item - clientID == %d\n", currentNode->clientInformation.clientID);
             
             if (previousNode != NULL) { // estou na cabeça da lista?
@@ -113,6 +115,25 @@ void removeClientFromClientList(ClientInformation clientInfo,
         currentNode = currentNode->nextNode;
     }
     clientLinkedList->size--;
+}
+
+void removeClientFromClientList(ClientInformation clientInfo,
+                                ClientLinkedList* clientLinkedList) {
+    removeClientFromClientListByClientID(clientInfo.clientID, clientLinkedList);
+}
+
+ClientInformation* getClientInformationById(int id,
+                                            ClientLinkedList* clientLinkedList) {
+    ClientInformation* clientInfo = NULL;
+    ClientNode* currentNode = clientLinkedList->head;
+    while(currentNode != NULL) {
+        if (currentNode->clientInformation.clientID == id) {
+            clientInfo = &currentNode->clientInformation;
+            break;
+        }
+        currentNode = currentNode->nextNode;
+    }
+    return clientInfo;
 }
 
 void printClientsList(ClientLinkedList* clientLinkedList) {
@@ -203,6 +224,12 @@ void sendClientsAvailableToNewClient(ClientInformation clientInfo,
     strcpy(message,"[server] Clients available to chat: \n");
 
     while(currentNode != NULL) {
+
+        if (currentNode->clientInformation.on_chat == 1) {
+            currentNode = currentNode->nextNode;
+            continue;
+        }
+
         char clientIdString[5];
         snprintf(clientIdString, 5, "%d", currentNode->clientInformation.clientID);
         strcat(message, clientIdString);
@@ -287,10 +314,37 @@ void updateClientUDPPort(ClientInformation* clientInformation,
 }
 
 /*****************************************************************************
- * method to initiate chat between clients                                   *
+ * methods to handle chat initialization between clients                     *
  *****************************************************************************/
 
+void sendClientIsNotAvailableToChatMessage(ClientInformation clientInfo) {
+    char   buf[MAXDATASIZE];
+    strcpy(buf, "The requested client is not available to chat\n");
+    write(clientInfo.connfd, buf, strlen(buf));
+}
+
+void sendChatInitializationMessageToClient(ClientInformation clientA,
+                                           ClientInformation clientB) {
+    // chat_init_with_client <client_id> <client_udp_port>
+    char   buf[MAXDATASIZE];
+    strcpy(buf, "chat_init_with_client ");
+
+    char clientBId[5];
+    snprintf(clientBId, 5, "%d ", clientB.clientID);
+    strcat(buf, clientBId);
+
+    char clientBUdpPort[sizeof(unsigned int)*8+1];
+    snprintf(clientBUdpPort, sizeof(unsigned int)*8+1, "%u", clientB.client_udp_port);
+    strcat(buf, clientBUdpPort);
+
+    printf("clientA.connfd %d\n", clientA.connfd);
+
+    write(clientA.connfd, buf, strlen(buf));
+}
+
+
 void initiateChatBetweenClients(ClientInformation* clientInformation,
+                                ClientLinkedList* clientLinkedList,
                                 char message[MAXLINE]) {
     printf("Initiating chat between clients...");
 
@@ -300,6 +354,28 @@ void initiateChatBetweenClients(ClientInformation* clientInformation,
     int clientIdToChatWith = strtol(substring, 0L, 10);
 
     printf("clientIdToChatWith -> %d\n", clientIdToChatWith);
+
+    ClientInformation* clientToChat = 
+        getClientInformationById(clientIdToChatWith, clientLinkedList);
+
+    if (clientToChat == NULL || clientToChat->on_chat == 1) {
+        sendClientIsNotAvailableToChatMessage(*clientInformation);
+        return;
+    }
+
+    sendChatInitializationMessageToClient(*clientToChat, *clientInformation);
+    sendChatInitializationMessageToClient(*clientInformation, *clientToChat);
+
+
+    // Não devo remover totalmente os clients da lista, pq se não não consiguirei
+    // ouvir a mensagem de finalização de chat de ambos para poder colocá-los
+    // disponiveis para chat novamente. Preciso pensar em alguma flag...
+
+    // removeClientFromClientList(*clientInformation, clientLinkedList);
+    // removeClientFromClientListByClientID(clientIdToChatWith, clientLinkedList);
+
+    clientInformation->on_chat = 1;
+    clientToChat->on_chat = 1;
 }
 
 /*****************************************************************************
@@ -313,7 +389,7 @@ void handleClientMessage(ClientInformation* clientInformation,
     if (strcmp(message, "--list-connected-clients") == 0) {
         sendClientsAvailableToNewClient(*clientInformation, clientLinkedList);
     } else if (strncmp(message, "--chat-with", 11) == 0) {
-        initiateChatBetweenClients(clientInformation, message);
+        initiateChatBetweenClients(clientInformation, clientLinkedList, message);
     } else if (strcmp(message, "--exit") == 0) {
         printf("To disconnect client from server...\n");
     } else if (strncmp(message, "my_udp_port_is", 14) == 0) {
