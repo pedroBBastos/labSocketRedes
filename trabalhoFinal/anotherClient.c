@@ -113,18 +113,41 @@ void readMessageFromServer(int socket_file_descriptor, unsigned int udpPort) {
     char recvline[MAXLINE + 1];
     bzero(&recvline, sizeof(recvline));
 
+    printf("Got message from server\n");
+
     if (read(socket_file_descriptor, recvline, MAXLINE + 1) == 0) {
         perror("Server terminated prematurely!!");
         exit(1);
     } else {
+        printf("The message -> %s\n", recvline);
         if (strncmp(recvline, "give_me_your_udp_port", 21) == 0) {
-            char   buf[MAXLINE + 1];
-            strcpy(buf, "my_udp_port_is ");
+            printf("Entered if to send UDP port\n");
+            // char   buf[MAXLINE + 1];
+            // strcpy(buf, "my_udp_port_is ");
+            // char myUdpPortString[sizeof(unsigned int)*8+1];
+            // snprintf(myUdpPortString, sizeof(unsigned int)*8+1, "%u", udpPort);
+            // strcat(buf, myUdpPortString);
+
+
+
+            char text_to_server[500];
+            bzero(&text_to_server, sizeof(text_to_server));
+
+            strcpy(text_to_server, "my_udp_port_is ");
             char myUdpPortString[sizeof(unsigned int)*8+1];
             snprintf(myUdpPortString, sizeof(unsigned int)*8+1, "%u", udpPort);
-            strcat(buf, myUdpPortString);
+            strcat(text_to_server, myUdpPortString);
 
-            write(socket_file_descriptor, buf, strlen(buf));
+            //Envia mensagem para o servidor
+            if(send(socket_file_descriptor, text_to_server, 500, 0) < 0) {
+                puts("Send failed");
+                exit(1);
+            }
+
+
+
+            // int n = write(socket_file_descriptor, buf, strlen(buf));
+            // printf("n from write %d\n", n);
         } else {
             printf("%s", recvline);
         }

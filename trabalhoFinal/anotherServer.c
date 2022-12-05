@@ -95,11 +95,17 @@ void removeClientFromClientList(ClientInformation clientInfo,
     while(currentNode != NULL) {
         if (currentNode->clientInformation.clientID == clientInfo.clientID) {
             printf("Removing item - clientID == %d\n", currentNode->clientInformation.clientID);
-            if (previousNode != NULL) {
+            
+            if (previousNode != NULL) { // estou na cabeça da lista?
                 previousNode->nextNode = currentNode->nextNode;
             } else {
                 clientLinkedList->head = currentNode->nextNode;
             }
+
+            if (currentNode->nextNode == NULL) { //estou no fim da lista?
+                clientLinkedList->tail = previousNode;
+            }
+
             free(currentNode);
             break;
         }
@@ -111,12 +117,12 @@ void removeClientFromClientList(ClientInformation clientInfo,
 
 void printClientsList(ClientLinkedList* clientLinkedList) {
     ClientNode* currentNode = clientLinkedList->head;
-    printf("----------------------------\n");
+    printf("Printing clients list ----------------------------\n");
     while(currentNode != NULL) {
         printf("client id: %d\n", currentNode->clientInformation.clientID);
         currentNode = currentNode->nextNode;
     }
-    printf("----------------------------\n");
+    printf("End Printing clients list----------------------------\n");
 }
 
 /*****************************************************************************
@@ -224,8 +230,6 @@ void notifyAllClientsNewClient(ClientInformation clientInfo,
     strcat(message, clientIdString);
     strcat(message, "\n");
 
-    printf("message -> %s\n", message);
-
     ClientNode* currentNode = clientLinkedList->head;
     while(currentNode != NULL) {
         write(currentNode->clientInformation.connfd, message, MAXLINE + 1);
@@ -239,6 +243,7 @@ void notifyAllClientsNewClient(ClientInformation clientInfo,
 
 void handleNewConnection(ClientLinkedList* clientLinkedList, fd_set* allset,
                          int* maxfd, int listenfd) {
+    printf("--------------------------------- \n");
     printf("New connection!!! \n");
 
     struct sockaddr_in cliaddr;
@@ -256,8 +261,9 @@ void handleNewConnection(ClientLinkedList* clientLinkedList, fd_set* allset,
     notifyAllClientsNewClient(clientInfo, clientLinkedList);
 
     addNewClientToClientList(clientInfo, clientLinkedList);
+    printClientsList(clientLinkedList);
     requestClientsUDPPort(clientInfo);
-    sendListOfCommandsToClient(clientInfo);
+    // sendListOfCommandsToClient(clientInfo);
 
     
     FD_SET(connfd, allset); /* add new descriptor to set */
@@ -272,6 +278,8 @@ void handleNewConnection(ClientLinkedList* clientLinkedList, fd_set* allset,
 
 void handleClientMessage(ClientInformation* clientInformation,
                          char message[MAXLINE], ClientLinkedList* clientLinkedList) {
+    printf("To handle clients message: %s\n", message);
+
     if (strcmp(message, "--list-connected-clients") == 0) {
         sendClientsAvailableToNewClient(*clientInformation, clientLinkedList);
     } else if (strncmp(message, "--chat-with", 11) == 0) {
@@ -293,6 +301,8 @@ void handleClientMessage(ClientInformation* clientInformation,
         memcpy(substring, &message[15], 5);
         substring[6] = '\0';
         clientInformation->client_udp_port = strtoul(substring, 0L, 10);
+
+        sendListOfCommandsToClient(*clientInformation);
     } else {
         printf("Unknow command sent:\n");
         printf("    %s\n", message);
@@ -311,6 +321,7 @@ void checkAllClientsForData(ClientLinkedList* clientLinkedList, fd_set* rset,
     while(currentNode != NULL) {
         int sockfd = currentNode->clientInformation.connfd;
         if (FD_ISSET(sockfd, rset)) {
+            printf("--------------------------------- \n");
             int n;
             if ((n = read(sockfd, buf, MAXLINE)) == 0) { /* connection closed by client */
                 printf("Connection closed by client!!! \n");
@@ -319,7 +330,9 @@ void checkAllClientsForData(ClientLinkedList* clientLinkedList, fd_set* rset,
 
                 ClientNode* nodeToErase = currentNode;
                 currentNode = currentNode->nextNode;
+                // ClientNode* nextNode = currentNode->nextNode;
                 removeClientFromClientList(nodeToErase->clientInformation, clientLinkedList);
+                // currentNode = nextNode;
                 continue;
             } else {
                 // printf("recebido do cliente %s\n", buf);
@@ -356,6 +369,8 @@ int main (int argc, char **argv) {
         if (FD_ISSET(listenfd, &rset)) { /* new client connection */
             handleNewConnection(&clientLinkedList, &allset, &maxfd, listenfd);
         }
+        // sleep(5);
+        // printClientsList(&clientLinkedList);
         checkAllClientsForData(&clientLinkedList, &rset, &allset);
     }
 }
