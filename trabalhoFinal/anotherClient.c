@@ -13,6 +13,13 @@
 
 #define MAXLINE 4096
 
+typedef struct {
+    int inChatWithAnotherClient;
+    int peerId;
+    char peerIPAddress[16];
+    unsigned int peerUDPPort;
+} ChatObject;
+
 void checkProgramInput(int argc, char **argv) {
     char error[MAXLINE + 1];
     if (argc != 3) {
@@ -87,6 +94,42 @@ int conectToServer(char *address, char *port) {
     return socket_file_descriptor;
 }
 
+void getChatPeerInfo(char recvline[MAXLINE + 1], ChatObject* chatObject) {
+    // chat_init_with_client <client_id> <client_ip_address> <client_udp_port>
+
+    chatObject->inChatWithAnotherClient = 1;
+
+    char delim[] = " ";
+    char *ptr = strtok(recvline, delim);
+
+    // getting peer_id
+    ptr = strtok(NULL, delim);
+    chatObject->peerId = strtol(ptr, 0L, 10);
+
+    // getting peer_ip_address
+    ptr = strtok(NULL, delim);
+    strcpy(chatObject->peerIPAddress, ptr);
+
+    // getting peer_udp_port
+    ptr = strtok(NULL, delim);
+    chatObject->peerUDPPort = strtoul(ptr, 0L, 10);
+
+    printf("chatObject->peerId %d\n", chatObject->peerId);
+    printf("chatObject->peerIPAddress %s\n", chatObject->peerIPAddress);
+    printf("chatObject->peerUDPPort %u\n", chatObject->peerUDPPort);
+
+}
+
+void sendMessageToAnotherClient(int socket_file_descriptor) {
+    printf("To send message to another client\n");
+
+    char text_to_peer[500];
+    bzero(&text_to_peer, sizeof(text_to_peer));
+
+    fgets(text_to_peer, 500, stdin);
+    // text_to_peer[strcspn(text_to_peer, "\n")] = 0;
+}
+
 /*****************************************************************************
  * method to send message from stdin to server                               *
  *****************************************************************************/
@@ -126,7 +169,8 @@ void replyCurrentUDPPortToServer(int socket_file_descriptor,
  * method to read message from server                                        *
  *****************************************************************************/
 
-void readMessageFromServer(int socket_file_descriptor, unsigned int udpPort) {
+void readMessageFromServer(int socket_file_descriptor, unsigned int udpPort,
+                           ChatObject* chatObject) {
     char recvline[MAXLINE + 1];
     bzero(&recvline, sizeof(recvline));
 
@@ -138,6 +182,9 @@ void readMessageFromServer(int socket_file_descriptor, unsigned int udpPort) {
     } else {
         if (strncmp(recvline, "give_me_your_udp_port", 21) == 0) {
             replyCurrentUDPPortToServer(socket_file_descriptor, udpPort);
+        } else if (strncmp(recvline, "chat_init_with_client", 21) == 0) {
+            printf("recvline -> %s\n", recvline);
+            getChatPeerInfo(recvline, chatObject);
         } else {
             printf("%s", recvline);
         }
@@ -163,6 +210,9 @@ int main(int argc, char **argv) {
     fd_set rset;
     FD_ZERO(&rset);
 
+    // int inChatWithAnotherClient = 0;
+    ChatObject chatObject;
+
     for ( ; ; ) {
         FD_SET(socket_file_descriptor, &rset);
         FD_SET(STDIN_FILENO, &rset);
@@ -170,11 +220,16 @@ int main(int argc, char **argv) {
         select(maxfdp, &rset, NULL, NULL, NULL);
 
         if (FD_ISSET(socket_file_descriptor, &rset)) {
-            readMessageFromServer(socket_file_descriptor, currentUdpPort);
+            readMessageFromServer(socket_file_descriptor, currentUdpPort,
+                                  &chatObject);
         }
 
         if (FD_ISSET(STDIN_FILENO, &rset)) {
-            sendMessageToServer(socket_file_descriptor);
+            if (!chatObject.inChatWithAnotherClient) {
+                sendMessageToServer(socket_file_descriptor);
+            } else {
+                sendMessageToAnotherClient(3232);
+            }
         }
     }
     

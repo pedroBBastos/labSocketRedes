@@ -15,3 +15,7 @@ https://stackoverflow.com/questions/15102992/what-is-the-difference-between-stdi
 TODO:
     - extrair para um método o envio de uma mensagem do servidor para um cliente específico
     - extrair para um método o tratamento de desconexão de um cliente..
+
+----------------------
+
+https://stackoverflow.com/questions/4513316/split-string-in-c-every-white-space

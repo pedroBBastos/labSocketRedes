@@ -31,7 +31,7 @@ typedef struct {
     char client_ip[16];
     unsigned int client_socket_port;
     unsigned int client_udp_port;
-    int on_chat;
+    int in_chat;
 } ClientInformation;
 
 typedef struct ClientNode_struct {
@@ -57,7 +57,7 @@ ClientInformation getClientInformation(int connfd, struct sockaddr_in peeraddr) 
     clientInfo.clientID = referenceIDForCLients++;
     clientInfo.connfd = connfd; // saving descriptor
     clientInfo.client_udp_port = -1;
-    clientInfo.on_chat = 0;
+    clientInfo.in_chat = 0;
 
     return clientInfo;
 }
@@ -225,7 +225,7 @@ void sendClientsAvailableToNewClient(ClientInformation clientInfo,
 
     while(currentNode != NULL) {
 
-        if (currentNode->clientInformation.on_chat == 1) {
+        if (currentNode->clientInformation.in_chat == 1) {
             currentNode = currentNode->nextNode;
             continue;
         }
@@ -319,13 +319,13 @@ void updateClientUDPPort(ClientInformation* clientInformation,
 
 void sendClientIsNotAvailableToChatMessage(ClientInformation clientInfo) {
     char   buf[MAXDATASIZE];
-    strcpy(buf, "The requested client is not available to chat\n");
+    strcpy(buf, "The requested client is not available to chat or it doesn't exist!\n");
     write(clientInfo.connfd, buf, strlen(buf));
 }
 
 void sendChatInitializationMessageToClient(ClientInformation clientA,
                                            ClientInformation clientB) {
-    // chat_init_with_client <client_id> <client_udp_port>
+    // chat_init_with_client  <client_id> <client_ip_address> <client_udp_port>
     char   buf[MAXDATASIZE];
     strcpy(buf, "chat_init_with_client ");
 
@@ -333,11 +333,15 @@ void sendChatInitializationMessageToClient(ClientInformation clientA,
     snprintf(clientBId, 5, "%d ", clientB.clientID);
     strcat(buf, clientBId);
 
+    char clientBIPAddress[17];
+    snprintf(clientBIPAddress, 17, "%s ", clientB.client_ip);
+    strcat(buf, clientBIPAddress);
+
     char clientBUdpPort[sizeof(unsigned int)*8+1];
     snprintf(clientBUdpPort, sizeof(unsigned int)*8+1, "%u", clientB.client_udp_port);
     strcat(buf, clientBUdpPort);
 
-    printf("clientA.connfd %d\n", clientA.connfd);
+    printf("buf -> %s\n", buf);
 
     write(clientA.connfd, buf, strlen(buf));
 }
@@ -358,7 +362,7 @@ void initiateChatBetweenClients(ClientInformation* clientInformation,
     ClientInformation* clientToChat = 
         getClientInformationById(clientIdToChatWith, clientLinkedList);
 
-    if (clientToChat == NULL || clientToChat->on_chat == 1) {
+    if (clientToChat == NULL || clientToChat->in_chat == 1) {
         sendClientIsNotAvailableToChatMessage(*clientInformation);
         return;
     }
@@ -374,8 +378,8 @@ void initiateChatBetweenClients(ClientInformation* clientInformation,
     // removeClientFromClientList(*clientInformation, clientLinkedList);
     // removeClientFromClientListByClientID(clientIdToChatWith, clientLinkedList);
 
-    clientInformation->on_chat = 1;
-    clientToChat->on_chat = 1;
+    clientInformation->in_chat = 1;
+    clientToChat->in_chat = 1;
 }
 
 /*****************************************************************************
