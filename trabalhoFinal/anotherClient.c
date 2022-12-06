@@ -134,7 +134,8 @@ void sendMessageToAnotherClient(ChatObject* chatObject, int sockToSendMessagefd)
     fgets(text_to_peer, 500, stdin);
     // text_to_peer[strcspn(text_to_peer, "\n")] = 0;
 
-    sendto(sockToSendMessagefd, text_to_peer, strlen(text_to_peer), 0, (struct sockaddr*) &chatObject->peeraddr, sizeof(chatObject->peeraddr));
+    int n = sendto(sockToSendMessagefd, text_to_peer, strlen(text_to_peer), 0, (struct sockaddr*) &chatObject->peeraddr, sizeof(chatObject->peeraddr));
+    printf("n --> %d\n", n);
 }
 
 /*****************************************************************************
@@ -223,11 +224,24 @@ int main(int argc, char **argv) {
     for ( ; ; ) {
         FD_SET(socket_file_descriptor, &rset);
         FD_SET(STDIN_FILENO, &rset);
-        maxfdp = max(STDIN_FILENO, socket_file_descriptor) + 1;
+
+        if (chatObject.inChatWithAnotherClient) {
+            FD_SET(udpSockFileDescriptor, &rset);
+            maxfdp = max(max(STDIN_FILENO, socket_file_descriptor), udpSockFileDescriptor) + 1;
+        } else {
+            maxfdp = max(STDIN_FILENO, socket_file_descriptor) + 1;
+        }
+
+        //maxfdp = max(STDIN_FILENO, socket_file_descriptor) + 1;
         select(maxfdp, &rset, NULL, NULL, NULL);
 
         if (FD_ISSET(socket_file_descriptor, &rset)) {
             readMessageFromServer(socket_file_descriptor, currentUdpPort,
+                                  &chatObject);
+        }
+
+        if (FD_ISSET(udpSockFileDescriptor, &rset)) {
+            readMessageFromServer(udpSockFileDescriptor, currentUdpPort,
                                   &chatObject);
         }
 
