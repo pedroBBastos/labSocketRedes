@@ -18,6 +18,7 @@ typedef struct {
     int peerId;
     char peerIPAddress[16];
     unsigned int peerUDPPort;
+    struct sockaddr_in peeraddr;
 } ChatObject;
 
 void checkProgramInput(int argc, char **argv) {
@@ -118,9 +119,13 @@ void getChatPeerInfo(char recvline[MAXLINE + 1], ChatObject* chatObject) {
     printf("chatObject->peerIPAddress %s\n", chatObject->peerIPAddress);
     printf("chatObject->peerUDPPort %u\n", chatObject->peerUDPPort);
 
+    bzero(&chatObject->peeraddr, sizeof(chatObject->peeraddr));
+    chatObject->peeraddr.sin_family = AF_INET;
+    chatObject->peeraddr.sin_port = htons(chatObject->peerUDPPort);
+    inet_pton(AF_INET, chatObject->peerIPAddress, &chatObject->peeraddr.sin_addr);
 }
 
-void sendMessageToAnotherClient(ChatObject* chatObject) {
+void sendMessageToAnotherClient(ChatObject* chatObject, int sockToSendMessagefd) {
     printf("To send message to another client\n");
 
     char text_to_peer[500];
@@ -128,6 +133,8 @@ void sendMessageToAnotherClient(ChatObject* chatObject) {
 
     fgets(text_to_peer, 500, stdin);
     // text_to_peer[strcspn(text_to_peer, "\n")] = 0;
+
+    sendto(sockToSendMessagefd, text_to_peer, strlen(text_to_peer), 0, (struct sockaddr*) &chatObject->peeraddr, sizeof(chatObject->peeraddr));
 }
 
 /*****************************************************************************
@@ -210,8 +217,8 @@ int main(int argc, char **argv) {
     fd_set rset;
     FD_ZERO(&rset);
 
-    // int inChatWithAnotherClient = 0;
     ChatObject chatObject;
+    int sockToSendMessagefd = socket(AF_INET, SOCK_DGRAM, 0);
 
     for ( ; ; ) {
         FD_SET(socket_file_descriptor, &rset);
@@ -228,7 +235,7 @@ int main(int argc, char **argv) {
             if (!chatObject.inChatWithAnotherClient) {
                 sendMessageToServer(socket_file_descriptor);
             } else {
-                sendMessageToAnotherClient(&chatObject);
+                sendMessageToAnotherClient(&chatObject, sockToSendMessagefd);
             }
         }
     }

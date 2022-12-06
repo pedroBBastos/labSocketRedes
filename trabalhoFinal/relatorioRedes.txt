@@ -20,4 +20,5 @@ Relatorio redes
 	- criação de keywords para comunicação entre clientes e servidor
 		give_me_your_udp_port
 		my_udp_port_is <udp_port>
-		client_requested_to_chat <client udp port>
+		chat_init_with_client  <client_id> <client_ip_address> <client_udp_port>
+			- neste último parseando string com função strtok
