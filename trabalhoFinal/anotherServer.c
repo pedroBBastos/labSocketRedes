@@ -26,12 +26,12 @@
 int referenceIDForCLients = 0;
 
 typedef struct {
-    int clientID;
-    int connfd;
-    char client_ip[16];
-    unsigned int client_socket_port;
-    unsigned int client_udp_port;
-    int in_chat;
+    int clientID; // ID único do client
+    int connfd; // file descriptor da conexão TCP do cliente com o servidor
+    char client_ip[16]; // endereço IP do cliente
+    unsigned int client_socket_port; // porta da conexão TCP do cliente
+    unsigned int client_udp_port; // porta UDP do cliente
+    int in_chat; // flag para verificar se cliente está em chat ou disponível
 } ClientInformation;
 
 typedef struct ClientNode_struct {
@@ -202,14 +202,15 @@ void requestClientsUDPPort(ClientInformation clientInfo) {
  * method to send list of commands to a given client                         *
  *****************************************************************************/
 
-void sendListOfCommandsToClient(ClientInformation clientInfo) {
+void sendListOfCommandsToClient(ClientInformation* clientInfo) {
     char   buf[MAXDATASIZE];
     snprintf(buf, sizeof(buf), 
 		    "[server] Hello! These are the commands available:\n \
             --list-connected-clients\n \
             --chat-with <client-id>\n \
             --exit\n");
-    write(clientInfo.connfd, buf, strlen(buf));
+    int n = write(clientInfo->connfd, buf, strlen(buf));
+    printf("n ->> %d; clientInfo.connfd ->> %d\n", n, clientInfo->connfd);
 }
 
 /*****************************************************************************
@@ -311,6 +312,8 @@ void updateClientUDPPort(ClientInformation* clientInformation,
     memcpy(substring, &message[15], 5);
     substring[6] = '\0';
     clientInformation->client_udp_port = strtoul(substring, 0L, 10);
+    printf("clientInformation->connfd --> %d\n", clientInformation->connfd);
+    printf("FINISHED To set client udp port....\n");
 }
 
 /*****************************************************************************
@@ -398,7 +401,8 @@ void handleClientMessage(ClientInformation* clientInformation,
         printf("To disconnect client from server...\n");
     } else if (strncmp(message, "my_udp_port_is", 14) == 0) {
         updateClientUDPPort(clientInformation, message);
-        sendListOfCommandsToClient(*clientInformation);
+        printf("INSIDE IF....  clientInfo.connfd ->> %d\n", clientInformation->connfd);
+        sendListOfCommandsToClient(clientInformation);
     } else {
         printf("Unknow command sent:\n");
         printf("    %s\n", message);
