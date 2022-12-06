@@ -349,6 +349,10 @@ void sendChatInitializationMessageToClient(ClientInformation clientA,
     write(clientA.connfd, buf, strlen(buf));
 }
 
+void finishClientChat(ClientInformation* clientInformation) {
+    clientInformation->in_chat = 0;
+    sendListOfCommandsToClient(clientInformation);
+}
 
 void initiateChatBetweenClients(ClientInformation* clientInformation,
                                 ClientLinkedList* clientLinkedList,
@@ -377,7 +381,7 @@ void initiateChatBetweenClients(ClientInformation* clientInformation,
     // Não devo remover totalmente os clients da lista, pq se não não consiguirei
     // ouvir a mensagem de finalização de chat de ambos para poder colocá-los
     // disponiveis para chat novamente. Preciso pensar em alguma flag...
-    
+
     clientInformation->in_chat = 1;
     clientToChat->in_chat = 1;
 }
@@ -400,6 +404,8 @@ void handleClientMessage(ClientInformation* clientInformation,
         updateClientUDPPort(clientInformation, message);
         printf("INSIDE IF....  clientInfo.connfd ->> %d\n", clientInformation->connfd);
         sendListOfCommandsToClient(clientInformation);
+    } else if (strcmp(message, "finished_chat_with_peer") == 0) {
+        finishClientChat(clientInformation);
     } else {
         printf("Unknow command sent:\n");
         printf("    %s\n", message);

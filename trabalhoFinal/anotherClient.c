@@ -72,9 +72,9 @@ unsigned int retrieveCurrentUDPPort(int udpSockFileDescriptor) {
  *****************************************************************************/
 
 int conectToServer(char *address, char *port) {
-    int socket_file_descriptor;
+    int server_socket_fdescriptor;
     struct sockaddr_in servaddr;
-    if ( (socket_file_descriptor = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+    if ( (server_socket_fdescriptor = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         perror("socket error");
         exit(1);
     }
@@ -87,12 +87,12 @@ int conectToServer(char *address, char *port) {
         exit(1);
     }
 
-    if (connect(socket_file_descriptor, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0) {
+    if (connect(server_socket_fdescriptor, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0) {
         perror("connect error");
         exit(1);
     }
 
-    return socket_file_descriptor;
+    return server_socket_fdescriptor;
 }
 
 void getChatPeerInfo(char recvline[MAXLINE + 1], ChatObject* chatObject) {
@@ -124,7 +124,21 @@ void getChatPeerInfo(char recvline[MAXLINE + 1], ChatObject* chatObject) {
     printf("[chat-mode] If you want to get out from the chat and return to server, type 'finalizar_chat'\n");
 }
 
-void sendMessageToAnotherClient(ChatObject* chatObject, int sockToSendMessagefd) {
+void sendFinishedChatoMessageToServer(int server_socket_fdescriptor) {
+    char text_to_server[500];
+    bzero(&text_to_server, sizeof(text_to_server));
+
+    strcpy(text_to_server, "finished_chat_with_peer");
+
+    //Envia mensagem para o servidor
+    if(send(server_socket_fdescriptor, text_to_server, 500, 0) < 0) {
+        puts("Send failed");
+        exit(1);
+    }
+}
+
+void sendMessageToAnotherClient(ChatObject* chatObject, int sockToSendMessagefd,
+                                int server_socket_fdescriptor) {
     // printf("To send message to another client\n");
 
     char text_to_peer[500];
@@ -132,16 +146,26 @@ void sendMessageToAnotherClient(ChatObject* chatObject, int sockToSendMessagefd)
 
     fgets(text_to_peer, 500, stdin);
 
+    char text_to_check[500];
+    strcpy(text_to_check, text_to_peer);
+    text_to_check[strcspn(text_to_check, "\n")] = 0;
+
+    if (strcmp(text_to_check, "finalizar_chat") == 0) {
+        // TODO: Mandar para o servidor que está-se finalizando o chat
+        printf("FINISHING CHAT\n");
+        sendFinishedChatoMessageToServer(server_socket_fdescriptor);
+        chatObject->inChatWithAnotherClient = 0;
+    }
+
     sendto(sockToSendMessagefd, text_to_peer, strlen(text_to_peer), 0, 
             (struct sockaddr*) &chatObject->peeraddr, sizeof(chatObject->peeraddr));
-    // printf("n --> %d\n", n);
 }
 
 /*****************************************************************************
  * method to send message from stdin to server                               *
  *****************************************************************************/
 
-void sendMessageToServer(int socket_file_descriptor) {
+void sendMessageToServer(int server_socket_fdescriptor) {
     char text_to_server[500];
     bzero(&text_to_server, sizeof(text_to_server));
 
@@ -149,13 +173,13 @@ void sendMessageToServer(int socket_file_descriptor) {
     text_to_server[strcspn(text_to_server, "\n")] = 0;
 
     //Envia mensagem para o servidor
-    if(send(socket_file_descriptor, text_to_server, 500, 0) < 0) {
+    if(send(server_socket_fdescriptor, text_to_server, 500, 0) < 0) {
         puts("Send failed");
         exit(1);
     }
 }
 
-void replyCurrentUDPPortToServer(int socket_file_descriptor,
+void replyCurrentUDPPortToServer(int server_socket_fdescriptor,
                                  unsigned int udpPort) {
     char text_to_server[500];
     bzero(&text_to_server, sizeof(text_to_server));
@@ -166,7 +190,7 @@ void replyCurrentUDPPortToServer(int socket_file_descriptor,
     strcat(text_to_server, myUdpPortString);
 
     //Envia mensagem para o servidor
-    if(send(socket_file_descriptor, text_to_server, 500, 0) < 0) {
+    if(send(server_socket_fdescriptor, text_to_server, 500, 0) < 0) {
         puts("Send failed");
         exit(1);
     }
@@ -176,7 +200,8 @@ void replyCurrentUDPPortToServer(int socket_file_descriptor,
  * method to read message from the other client wich is chatting with me     *
  *****************************************************************************/
 
-void readMessageFromChatPeer(int udp_socket_file_descriptor, ChatObject* chatObject) {
+void readMessageFromChatPeer(int udp_socket_file_descriptor, ChatObject* chatObject,
+                             int server_socket_fdescriptor) {
     char recvline[MAXLINE + 1];
     bzero(&recvline, sizeof(recvline));
 
@@ -184,6 +209,18 @@ void readMessageFromChatPeer(int udp_socket_file_descriptor, ChatObject* chatObj
         perror("Server terminated prematurely!!");
         exit(1);
     } else {
+
+        char text_to_check[500];
+        strcpy(text_to_check, recvline);
+        text_to_check[strcspn(text_to_check, "\n")] = 0;
+
+        if (strcmp(text_to_check, "finalizar_chat") == 0) {
+            // TODO: Mandar para o servidor que está-se finalizando o chat
+            printf("FINISHING CHAT\n");
+            sendFinishedChatoMessageToServer(server_socket_fdescriptor);
+            chatObject->inChatWithAnotherClient = 0;
+        }
+
         printf("[Client id:%d]: %s", chatObject->peerId, recvline);
     }
 }
@@ -192,19 +229,19 @@ void readMessageFromChatPeer(int udp_socket_file_descriptor, ChatObject* chatObj
  * method to read message from server                                        *
  *****************************************************************************/
 
-void readMessageFromServer(int socket_file_descriptor, unsigned int udpPort,
+void readMessageFromServer(int server_socket_fdescriptor, unsigned int udpPort,
                            ChatObject* chatObject) {
     char recvline[MAXLINE + 1];
     bzero(&recvline, sizeof(recvline));
 
     // printf("Got message from server\n");
 
-    if (read(socket_file_descriptor, recvline, MAXLINE + 1) == 0) {
+    if (read(server_socket_fdescriptor, recvline, MAXLINE + 1) == 0) {
         perror("Server terminated prematurely!!");
         exit(1);
     } else {
         if (strncmp(recvline, "give_me_your_udp_port", 21) == 0) {
-            replyCurrentUDPPortToServer(socket_file_descriptor, udpPort);
+            replyCurrentUDPPortToServer(server_socket_fdescriptor, udpPort);
         } else if (strncmp(recvline, "chat_init_with_client", 21) == 0) {
             // printf("recvline -> %s\n", recvline);
             getChatPeerInfo(recvline, chatObject);
@@ -219,14 +256,14 @@ void readMessageFromServer(int socket_file_descriptor, unsigned int udpPort,
  *****************************************************************************/
 
 int main(int argc, char **argv) {
-    int socket_file_descriptor, maxfdp;
+    int server_socket_fdescriptor, maxfdp;
     struct sockaddr_in udpaddr;
     int udpSockFileDescriptor;
     unsigned int currentUdpPort;
 
     checkProgramInput(argc, argv);
 
-    socket_file_descriptor = conectToServer(argv[1], argv[2]);
+    server_socket_fdescriptor = conectToServer(argv[1], argv[2]);
     udpSockFileDescriptor = initiateUDPSocket(&udpaddr);
     currentUdpPort = retrieveCurrentUDPPort(udpSockFileDescriptor);
 
@@ -237,33 +274,33 @@ int main(int argc, char **argv) {
     int sockToSendMessagefd = socket(AF_INET, SOCK_DGRAM, 0);
 
     for ( ; ; ) {
-        FD_SET(socket_file_descriptor, &rset);
+        FD_SET(server_socket_fdescriptor, &rset);
         FD_SET(STDIN_FILENO, &rset);
 
         if (chatObject.inChatWithAnotherClient) {
             FD_SET(udpSockFileDescriptor, &rset);
-            maxfdp = max(max(STDIN_FILENO, socket_file_descriptor), udpSockFileDescriptor) + 1;
+            maxfdp = max(max(STDIN_FILENO, server_socket_fdescriptor), udpSockFileDescriptor) + 1;
         } else {
-            maxfdp = max(STDIN_FILENO, socket_file_descriptor) + 1;
+            maxfdp = max(STDIN_FILENO, server_socket_fdescriptor) + 1;
         }
 
-        //maxfdp = max(STDIN_FILENO, socket_file_descriptor) + 1;
+        //maxfdp = max(STDIN_FILENO, server_socket_fdescriptor) + 1;
         select(maxfdp, &rset, NULL, NULL, NULL);
 
-        if (FD_ISSET(socket_file_descriptor, &rset)) {
-            readMessageFromServer(socket_file_descriptor, currentUdpPort,
+        if (FD_ISSET(server_socket_fdescriptor, &rset)) {
+            readMessageFromServer(server_socket_fdescriptor, currentUdpPort,
                                   &chatObject);
         }
 
         if (FD_ISSET(udpSockFileDescriptor, &rset)) {
-            readMessageFromChatPeer(udpSockFileDescriptor, &chatObject);
+            readMessageFromChatPeer(udpSockFileDescriptor, &chatObject, server_socket_fdescriptor);
         }
 
         if (FD_ISSET(STDIN_FILENO, &rset)) {
             if (!chatObject.inChatWithAnotherClient) {
-                sendMessageToServer(socket_file_descriptor);
+                sendMessageToServer(server_socket_fdescriptor);
             } else {
-                sendMessageToAnotherClient(&chatObject, sockToSendMessagefd);
+                sendMessageToAnotherClient(&chatObject, sockToSendMessagefd, server_socket_fdescriptor);
             }
         }
     }
