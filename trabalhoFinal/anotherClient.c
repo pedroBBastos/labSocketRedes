@@ -21,6 +21,15 @@ typedef struct {
     struct sockaddr_in peeraddr;
 } ChatObject;
 
+ChatObject getNewChatObject() {
+    ChatObject chatObject;
+    chatObject.inChatWithAnotherClient = 0;
+    chatObject.peerId = -1;
+    strcpy(chatObject.peerIPAddress, "");
+    chatObject.peerUDPPort = 0;
+    return chatObject;
+}
+
 void checkProgramInput(int argc, char **argv) {
     char error[MAXLINE + 1];
     if (argc != 3) {
@@ -164,6 +173,8 @@ void sendMessageToAnotherClient(ChatObject* chatObject, int sockToSendMessagefd,
  *****************************************************************************/
 
 void sendMessageToServer(int server_socket_fdescriptor) {
+    // printf("Sending message to server\n");
+
     char text_to_server[500];
     bzero(&text_to_server, sizeof(text_to_server));
 
@@ -241,7 +252,6 @@ void readMessageFromServer(int server_socket_fdescriptor, unsigned int udpPort,
         if (strncmp(recvline, "give_me_your_udp_port", 21) == 0) {
             replyCurrentUDPPortToServer(server_socket_fdescriptor, udpPort);
         } else if (strncmp(recvline, "chat_init_with_client", 21) == 0) {
-            // printf("recvline -> %s\n", recvline);
             getChatPeerInfo(recvline, chatObject);
         } else {
             printf("%s", recvline);
@@ -268,7 +278,7 @@ int main(int argc, char **argv) {
     fd_set rset;
     FD_ZERO(&rset);
 
-    ChatObject chatObject;
+    ChatObject chatObject = getNewChatObject();
     int sockToSendMessagefd = socket(AF_INET, SOCK_DGRAM, 0);
 
     for ( ; ; ) {
@@ -282,7 +292,6 @@ int main(int argc, char **argv) {
             maxfdp = max(STDIN_FILENO, server_socket_fdescriptor) + 1;
         }
 
-        //maxfdp = max(STDIN_FILENO, server_socket_fdescriptor) + 1;
         select(maxfdp, &rset, NULL, NULL, NULL);
 
         if (FD_ISSET(server_socket_fdescriptor, &rset)) {
