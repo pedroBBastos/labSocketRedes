@@ -151,8 +151,6 @@ void sendMessageToAnotherClient(ChatObject* chatObject, int sockToSendMessagefd,
     text_to_check[strcspn(text_to_check, "\n")] = 0;
 
     if (strcmp(text_to_check, "finalizar_chat") == 0) {
-        // TODO: Mandar para o servidor que está-se finalizando o chat
-        printf("FINISHING CHAT\n");
         sendFinishedChatoMessageToServer(server_socket_fdescriptor);
         chatObject->inChatWithAnotherClient = 0;
     }
@@ -216,12 +214,12 @@ void readMessageFromChatPeer(int udp_socket_file_descriptor, ChatObject* chatObj
 
         if (strcmp(text_to_check, "finalizar_chat") == 0) {
             // TODO: Mandar para o servidor que está-se finalizando o chat
-            printf("FINISHING CHAT\n");
+            printf("[chat-mode] Chat ended by peer client! Returning to server command mode.. \n");
             sendFinishedChatoMessageToServer(server_socket_fdescriptor);
             chatObject->inChatWithAnotherClient = 0;
+        } else {
+            printf("[Client id:%d]: %s", chatObject->peerId, recvline);
         }
-
-        printf("[Client id:%d]: %s", chatObject->peerId, recvline);
     }
 }
 
