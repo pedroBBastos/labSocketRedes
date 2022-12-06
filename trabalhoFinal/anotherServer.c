@@ -234,6 +234,9 @@ void sendClientsAvailableToNewClient(ClientInformation clientInfo,
         char clientIdString[5];
         snprintf(clientIdString, 5, "%d", currentNode->clientInformation.clientID);
         strcat(message, clientIdString);
+        if (currentNode->clientInformation.clientID == clientInfo.clientID) {
+            strcat(message, " (You)");
+        }
         if (currentNode->nextNode != NULL)
             strcat(message, ", ");
         currentNode = currentNode->nextNode;
@@ -404,6 +407,7 @@ void handleClientMessage(ClientInformation* clientInformation,
         updateClientUDPPort(clientInformation, message);
         printf("INSIDE IF....  clientInfo.connfd ->> %d\n", clientInformation->connfd);
         sendListOfCommandsToClient(clientInformation);
+        sendClientsAvailableToNewClient(*clientInformation, clientLinkedList);
     } else if (strcmp(message, "finished_chat_with_peer") == 0) {
         finishClientChat(clientInformation);
     } else {
