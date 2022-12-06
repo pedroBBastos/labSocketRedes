@@ -322,7 +322,7 @@ void updateClientUDPPort(ClientInformation* clientInformation,
 
 void sendClientIsNotAvailableToChatMessage(ClientInformation clientInfo) {
     char   buf[MAXDATASIZE];
-    strcpy(buf, "The requested client is not available to chat or it doesn't exist!\n");
+    strcpy(buf, "[server] The requested client is not available to chat or it doesn't exist!\n");
     write(clientInfo.connfd, buf, strlen(buf));
 }
 
@@ -377,10 +377,7 @@ void initiateChatBetweenClients(ClientInformation* clientInformation,
     // Não devo remover totalmente os clients da lista, pq se não não consiguirei
     // ouvir a mensagem de finalização de chat de ambos para poder colocá-los
     // disponiveis para chat novamente. Preciso pensar em alguma flag...
-
-    // removeClientFromClientList(*clientInformation, clientLinkedList);
-    // removeClientFromClientListByClientID(clientIdToChatWith, clientLinkedList);
-
+    
     clientInformation->in_chat = 1;
     clientToChat->in_chat = 1;
 }

@@ -115,27 +115,26 @@ void getChatPeerInfo(char recvline[MAXLINE + 1], ChatObject* chatObject) {
     ptr = strtok(NULL, delim);
     chatObject->peerUDPPort = strtoul(ptr, 0L, 10);
 
-    printf("chatObject->peerId %d\n", chatObject->peerId);
-    printf("chatObject->peerIPAddress %s\n", chatObject->peerIPAddress);
-    printf("chatObject->peerUDPPort %u\n", chatObject->peerUDPPort);
-
     bzero(&chatObject->peeraddr, sizeof(chatObject->peeraddr));
     chatObject->peeraddr.sin_family = AF_INET;
     chatObject->peeraddr.sin_port = htons(chatObject->peerUDPPort);
     inet_pton(AF_INET, chatObject->peerIPAddress, &chatObject->peeraddr.sin_addr);
+
+    printf("[chat-mode] You are now entering in chat mode with client %d..\n", chatObject->peerId);
+    printf("[chat-mode] If you want to get out from the chat and return to server, type 'finalizar_chat'\n");
 }
 
 void sendMessageToAnotherClient(ChatObject* chatObject, int sockToSendMessagefd) {
-    printf("To send message to another client\n");
+    // printf("To send message to another client\n");
 
     char text_to_peer[500];
     bzero(&text_to_peer, sizeof(text_to_peer));
 
     fgets(text_to_peer, 500, stdin);
-    // text_to_peer[strcspn(text_to_peer, "\n")] = 0;
 
-    int n = sendto(sockToSendMessagefd, text_to_peer, strlen(text_to_peer), 0, (struct sockaddr*) &chatObject->peeraddr, sizeof(chatObject->peeraddr));
-    printf("n --> %d\n", n);
+    sendto(sockToSendMessagefd, text_to_peer, strlen(text_to_peer), 0, 
+            (struct sockaddr*) &chatObject->peeraddr, sizeof(chatObject->peeraddr));
+    // printf("n --> %d\n", n);
 }
 
 /*****************************************************************************
@@ -174,6 +173,22 @@ void replyCurrentUDPPortToServer(int socket_file_descriptor,
 }
 
 /*****************************************************************************
+ * method to read message from the other client wich is chatting with me     *
+ *****************************************************************************/
+
+void readMessageFromChatPeer(int udp_socket_file_descriptor, ChatObject* chatObject) {
+    char recvline[MAXLINE + 1];
+    bzero(&recvline, sizeof(recvline));
+
+    if (read(udp_socket_file_descriptor, recvline, MAXLINE + 1) == 0) {
+        perror("Server terminated prematurely!!");
+        exit(1);
+    } else {
+        printf("[Client id:%d]: %s", chatObject->peerId, recvline);
+    }
+}
+
+/*****************************************************************************
  * method to read message from server                                        *
  *****************************************************************************/
 
@@ -182,7 +197,7 @@ void readMessageFromServer(int socket_file_descriptor, unsigned int udpPort,
     char recvline[MAXLINE + 1];
     bzero(&recvline, sizeof(recvline));
 
-    printf("Got message from server\n");
+    // printf("Got message from server\n");
 
     if (read(socket_file_descriptor, recvline, MAXLINE + 1) == 0) {
         perror("Server terminated prematurely!!");
@@ -191,7 +206,7 @@ void readMessageFromServer(int socket_file_descriptor, unsigned int udpPort,
         if (strncmp(recvline, "give_me_your_udp_port", 21) == 0) {
             replyCurrentUDPPortToServer(socket_file_descriptor, udpPort);
         } else if (strncmp(recvline, "chat_init_with_client", 21) == 0) {
-            printf("recvline -> %s\n", recvline);
+            // printf("recvline -> %s\n", recvline);
             getChatPeerInfo(recvline, chatObject);
         } else {
             printf("%s", recvline);
@@ -241,8 +256,7 @@ int main(int argc, char **argv) {
         }
 
         if (FD_ISSET(udpSockFileDescriptor, &rset)) {
-            readMessageFromServer(udpSockFileDescriptor, currentUdpPort,
-                                  &chatObject);
+            readMessageFromChatPeer(udpSockFileDescriptor, &chatObject);
         }
 
         if (FD_ISSET(STDIN_FILENO, &rset)) {
