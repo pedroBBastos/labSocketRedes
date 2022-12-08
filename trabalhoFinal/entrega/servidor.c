@@ -352,9 +352,11 @@ void sendChatInitializationMessageToClient(ClientInformation clientA,
     write(clientA.connfd, buf, strlen(buf));
 }
 
-void finishClientChat(ClientInformation* clientInformation) {
+void finishClientChat(ClientInformation* clientInformation,
+                      ClientLinkedList* clientLinkedList) {
     clientInformation->in_chat = 0;
     sendListOfCommandsToClient(clientInformation);
+    sendClientsAvailableToNewClient(*clientInformation, clientLinkedList);
 }
 
 void initiateChatBetweenClients(ClientInformation* clientInformation,
@@ -409,7 +411,7 @@ void handleClientMessage(ClientInformation* clientInformation,
         sendListOfCommandsToClient(clientInformation);
         sendClientsAvailableToNewClient(*clientInformation, clientLinkedList);
     } else if (strcmp(message, "finished_chat_with_peer") == 0) {
-        finishClientChat(clientInformation);
+        finishClientChat(clientInformation, clientLinkedList);
     } else {
         printf("Unknow command sent:\n");
         printf("    %s\n", message);
