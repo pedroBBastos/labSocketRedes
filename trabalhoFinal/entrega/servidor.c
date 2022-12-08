@@ -433,7 +433,7 @@ void checkAllClientsForData(ClientLinkedList* clientLinkedList, fd_set* rset,
         if (FD_ISSET(sockfd, rset)) {
             printf("--------------------------------- \n");
             int n;
-            if ((n = read(sockfd, buf, MAXLINE)) == 0) { /* connection closed by client */
+            if ((n = read(sockfd, buf, MAXLINE)) == 0 || strcmp(buf, "--exit") == 0) { /* connection closed by client */
                 printf("Connection closed by client!!! \n");
                 close(sockfd);
                 FD_CLR(sockfd, allset);
